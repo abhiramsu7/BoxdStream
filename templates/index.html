@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamScout: Check Your Watchlist</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* Green */
+            --primary-dark: #388E3C; 
+            --secondary-color: #1a73e8; /* Blue */
+            --bg-color: #f0f4f8; /* Light Blue/Gray Background */
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Card Container Styling */
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background-color: var(--card-bg);
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+        }
+        .container:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+        h1 span {
+            font-size: 1.2em;
+            margin-right: 10px;
+            color: var(--primary-color);
+        }
+        .tagline {
+            color: #666;
+            margin-bottom: 25px;
+            font-weight: 400;
+        }
+
+        /* Form Elements */
+        label { 
+            display: block; 
+            margin-top: 20px; 
+            margin-bottom: 5px;
+            font-weight: 600; 
+            color: #555;
+            font-size: 0.95em;
+        }
+        
+        input[type="file"], select { 
+            padding: 12px; 
+            width: 100%; 
+            box-sizing: border-box; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            transition: border-color 0.3s;
+            font-size: 1em;
+            background-color: #f9f9f9;
+        }
+        input[type="file"]:focus, select:focus {
+            border-color: var(--secondary-color);
+            outline: none;
+        }
+
+        /* Button Styling */
+        button { 
+            padding: 12px 25px; 
+            margin-top: 30px; 
+            width: 100%; 
+            box-sizing: border-box;
+            background-color: var(--primary-color); 
+            color: white; 
+            font-size: 1.1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        button:hover { 
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Error Message */
+        .error { 
+            color: #d9534f; 
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        /* File input specific styling (to hide default button and show custom text) */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .custom-file-upload {
+            border: 2px dashed #ccc;
+            background-color: #fff;
+            color: #999;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .file-input-wrapper:hover .custom-file-upload {
+            border-color: var(--secondary-color);
+            color: var(--secondary-color);
+        }
+        .file-name {
+            display: block;
+            margin-top: 5px;
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span>🎬</span> StreamScout
+        </h1>
+        <p class="tagline">Check your watchlist. Stream smarter.</p>
+
+        {% if error %}
+            <p class="error">⚠️ {{ error }}</p>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data">
+            
+            <label for="file">1. Upload Letterboxd Watchlist CSV:</label>
+            <div class="file-input-wrapper">
+                <input type="file" name="file" id="file" required onchange="updateFileName(this)">
+                <div class="custom-file-upload">
+                    Click to select your file (e.g., watchlist.csv)
+                    <span id="file-chosen" class="file-name">No file selected</span>
+                </div>
+            </div>
+
+            <label for="region_code">2. Select Your Region (2-letter code):</label>
+            <select name="region_code" id="region_code">
+                <option value="US">United States (US)</option>
+                <option value="IN" selected>India (IN)</option>
+                <option value="GB">United Kingdom (GB)</option>
+                <option value="CA">Canada (CA)</option>
+                <option value="AU">Australia (AU)</option>
+                <option value="DE">Germany (DE)</option>
+                <option value="FR">France (FR)</option>
+                <option value="JP">Japan (JP)</option>
+                <option value="MX">Mexico (MX)</option>
+                <option value="BR">Brazil (BR)</option>
+            </select>
+            
+            <button type="submit">Check Availability</button>
+        </form>
+    </div>
+
+    <script>
+        // Simple JavaScript to show the selected file name for a better user experience
+        function updateFileName(input) {
+            const fileNameDisplay = document.getElementById('file-chosen');
+            if (input.files.length > 0) {
+                fileNameDisplay.textContent = input.files[0].name;
+            } else {
+                fileNameDisplay.textContent = 'No file selected';
+            }
+        }
+    </script>
+</body>
+</html>
