@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StreamScout: Check Your Watchlist</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>BoxdStream: Check Your Watchlist</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #4CAF50; /* Green */
-            --primary-dark: #388E3C; 
-            --secondary-color: #1a73e8; /* Blue */
+            --primary-color: #4CAF50; /* TMDB/Success Green */
+            --letterboxd-green: #90B345; /* Closer to Letterboxd Green */
+            --secondary-color: #1a73e8; /* Action Blue */
             --bg-color: #f0f4f8; /* Light Blue/Gray Background */
             --card-bg: #ffffff;
             --text-color: #333;
-            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
         
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: var(--bg-color);
+            background: linear-gradient(135deg, var(--bg-color) 0%, #ffffff 100%);
             color: var(--text-color);
             display: flex;
             justify-content: center;
@@ -28,84 +28,142 @@
             padding: 20px;
         }
 
-        /* Card Container Styling */
+        /* Main Container/Card Styling */
         .container {
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
             background-color: var(--card-bg);
-            padding: 35px;
-            border-radius: 12px;
+            padding: 40px;
+            border-radius: 20px;
             box-shadow: var(--shadow-light);
-            transition: all 0.3s ease;
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border-top: 5px solid var(--letterboxd-green); /* Visual accent */
         }
         .container:hover {
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.15);
         }
 
-        /* Typography */
+        /* Typography and Branding */
+        .header-content { text-align: center; }
         h1 {
-            font-size: 1.8em;
-            font-weight: 700;
+            font-size: 2.2em;
+            font-weight: 800;
             color: var(--secondary-color);
             margin-bottom: 5px;
-            display: flex;
-            align-items: center;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
         }
         h1 span {
-            font-size: 1.2em;
-            margin-right: 10px;
-            color: var(--primary-color);
+            color: var(--letterboxd-green);
         }
         .tagline {
-            color: #666;
-            margin-bottom: 25px;
+            color: #777;
+            margin-bottom: 30px;
             font-weight: 400;
+            font-size: 1.1em;
+        }
+        .attribution {
+            font-size: 0.85em;
+            color: #aaa;
+            margin-top: -15px;
+            margin-bottom: 25px;
+        }
+
+        /* Step Indicator / Label Styling */
+        .step-label {
+            display: flex;
+            align-items: center;
+            margin-top: 25px;
+            margin-bottom: 8px;
+            font-weight: 700; 
+            color: var(--text-color);
+            font-size: 1em;
+            letter-spacing: 0.5px;
+        }
+        .step-label strong {
+            background-color: var(--letterboxd-green);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 50%;
+            margin-right: 10px;
+            font-size: 0.8em;
+        }
+        .step-info {
+            font-size: 0.85em;
+            color: #999;
+            font-weight: 400;
+            margin-left: 30px;
         }
 
         /* Form Elements */
-        label { 
-            display: block; 
-            margin-top: 20px; 
-            margin-bottom: 5px;
-            font-weight: 600; 
-            color: #555;
-            font-size: 0.95em;
-        }
-        
         input[type="file"], select { 
             padding: 12px; 
             width: 100%; 
             box-sizing: border-box; 
             border: 2px solid #ddd; 
-            border-radius: 8px; 
-            transition: border-color 0.3s;
+            border-radius: 10px; 
+            transition: border-color 0.3s, box-shadow 0.3s;
             font-size: 1em;
             background-color: #f9f9f9;
         }
+        select {
+            appearance: none; /* Hide default dropdown arrow */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            padding-right: 40px; /* Space for the custom arrow */
+        }
         input[type="file"]:focus, select:focus {
             border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
             outline: none;
+        }
+
+        /* Custom File Input Styling */
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-input-wrapper input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; }
+        .custom-file-upload {
+            border: 2px dashed var(--letterboxd-green);
+            background-color: var(--card-bg);
+            color: var(--letterboxd-green);
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .file-input-wrapper:hover .custom-file-upload {
+            border-style: solid;
+            background-color: rgba(144, 179, 69, 0.1);
+        }
+        .file-name {
+            display: block;
+            margin-top: 5px;
+            color: var(--secondary-color);
+            font-weight: 600;
+            font-size: 0.9em;
         }
 
         /* Button Styling */
         button { 
-            padding: 12px 25px; 
-            margin-top: 30px; 
+            padding: 15px 25px; 
+            margin-top: 40px; 
             width: 100%; 
             box-sizing: border-box;
-            background-color: var(--primary-color); 
+            background-color: var(--secondary-color); /* Action Blue */
             color: white; 
-            font-size: 1.1em;
-            font-weight: 600;
+            font-size: 1.2em;
+            font-weight: 700;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.1s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 6px 15px rgba(26, 115, 232, 0.4);
         }
         button:hover { 
-            background-color: var(--primary-dark);
-            transform: translateY(-2px);
+            background-color: #125bb7;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(26, 115, 232, 0.6);
         }
         button:active {
             transform: translateY(0);
@@ -114,56 +172,95 @@
         /* Error Message */
         .error { 
             color: #d9534f; 
-            background-color: #f2dede;
+            background-color: #fbecec;
             border: 1px solid #ebccd1;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-weight: 500;
-        }
-
-        /* File input specific styling (to hide default button and show custom text) */
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-        }
-        .file-input-wrapper input[type="file"] {
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-        .custom-file-upload {
-            border: 2px dashed #ccc;
-            background-color: #fff;
-            color: #999;
             padding: 12px;
             border-radius: 8px;
-            cursor: pointer;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        /* --- Cinematic Loading Screen Styles (NEW) --- */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             text-align: center;
-            transition: all 0.3s;
         }
-        .file-input-wrapper:hover .custom-file-upload {
-            border-color: var(--secondary-color);
-            color: var(--secondary-color);
+
+        .loading-card {
+            background-color: var(--card-bg);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: var(--shadow-light);
+            max-width: 550px;
+            width: 90%;
+            overflow: hidden; 
         }
-        .file-name {
-            display: block;
-            margin-top: 5px;
-            color: var(--primary-dark);
+
+        /* Progress Bar Styling */
+        .cinematic-progress-container {
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar-wrapper {
+            height: 12px;
+            background-color: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%; /* Starts at 0, filled by JS */
+            background: linear-gradient(90deg, var(--letterboxd-green) 0%, var(--primary-color) 100%);
+            transition: width 0.3s ease; /* Smooth filling transition */
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+            animation: stripe-animation 1s linear infinite; /* Optional subtle animation */
+            background-size: 30px 30px;
+            background-image: linear-gradient(
+                45deg,
+                rgba(255, 255, 255, 0.15) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255, 255, 255, 0.15) 50%,
+                rgba(255, 255, 255, 0.15) 75%,
+                transparent 75%,
+                transparent
+            );
+        }
+
+        @keyframes stripe-animation {
+            0% { background-position: 30px 0; }
+            100% { background-position: 0 0; }
+        }
+
+        .progress-text {
             font-weight: 600;
+            color: var(--secondary-color);
+            font-size: 1em;
         }
     </style>
 </head>
 <body>
+    
     <div class="container">
-        <h1>
-            <span>🎬</span> StreamScout
-        </h1>
-        <p class="tagline">Check your watchlist. Stream smarter.</p>
+        <div class="header-content">
+            <h1>Boxd<span>Stream</span></h1>
+            <p class="tagline">Instantly check the streaming availability for your Letterboxd Watchlist.</p>
+            <p class="attribution">Powered by TMDB data. Built for Letterboxd exports.</p>
+        </div>
 
         {% if error %}
             <p class="error">⚠️ {{ error }}</p>
@@ -171,16 +268,22 @@
 
         <form method="POST" enctype="multipart/form-data">
             
-            <label for="file">1. Upload Letterboxd Watchlist CSV:</label>
+            <div class="step-label">
+                <strong>1</strong> Upload Watchlist CSV
+            </div>
+            <div class="step-info">Export your Watchlist from Letterboxd settings.</div>
             <div class="file-input-wrapper">
                 <input type="file" name="file" id="file" required onchange="updateFileName(this)">
                 <div class="custom-file-upload">
-                    Click to select your file (e.g., watchlist.csv)
+                    Click here to select `watchlist.csv`
                     <span id="file-chosen" class="file-name">No file selected</span>
                 </div>
             </div>
 
-            <label for="region_code">2. Select Your Region (2-letter code):</label>
+            <div class="step-label">
+                <strong>2</strong> Select Your Region
+            </div>
+            <div class="step-info">Availability varies by country (2-letter code).</div>
             <select name="region_code" id="region_code">
                 <option value="US">United States (US)</option>
                 <option value="IN" selected>India (IN)</option>
@@ -194,20 +297,99 @@
                 <option value="BR">Brazil (BR)</option>
             </select>
             
-            <button type="submit">Check Availability</button>
+            <button type="submit">
+                Check Streaming Availability
+            </button>
         </form>
     </div>
 
+    <div class="loading-screen cinematic-loading" id="loading-screen" style="display: none;">
+        <div class="loading-card">
+            <h1>Scanning Your Cinematic Universe...</h1>
+            <p class="tagline">Comparing your watchlist against thousands of streaming services.</p>
+            
+            <div class="cinematic-progress-container">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="cinematic-progress-bar"></div>
+                </div>
+                <p id="progress-text" class="progress-text">0% Complete - Initializing Scan</p>
+            </div>
+            
+            <p class="note">This process can take up to 30 seconds for large files.</p>
+        </div>
+    </div>
+
+
     <script>
-        // Simple JavaScript to show the selected file name for a better user experience
+        // JS to display selected file name
         function updateFileName(input) {
             const fileNameDisplay = document.getElementById('file-chosen');
             if (input.files.length > 0) {
-                fileNameDisplay.textContent = input.files[0].name;
+                fileNameDisplay.textContent = 'Selected: ' + input.files[0].name;
             } else {
                 fileNameDisplay.textContent = 'No file selected';
             }
         }
+
+        // --- NEW CINEMATIC PROGRESS BAR LOGIC ---
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const loadingScreen = document.getElementById('loading-screen');
+            const mainContainer = document.querySelector('.container');
+            const progressBar = document.getElementById('cinematic-progress-bar');
+            const progressText = document.getElementById('progress-text');
+            
+            // Total time for simulation (e.g., 25 seconds, adjust this if your server is faster/slower)
+            const totalTimeMs = 25000; 
+            let startTime;
+            
+            // Function to update the progress bar and text
+            function updateProgress() {
+                if (startTime) {
+                    const elapsedTime = Date.now() - startTime;
+                    let progress = Math.min(100, (elapsedTime / totalTimeMs) * 100);
+                    
+                    progressBar.style.width = progress + '%';
+                    
+                    let statusText;
+                    if (progress < 25) {
+                        statusText = "Parsing CSV and Initializing Scan...";
+                    } else if (progress < 60) {
+                        statusText = "Locating Titles and Fetching TMDB IDs...";
+                    } else if (progress < 90) {
+                        statusText = "Checking Streaming Availability (Deep Scan)...";
+                    } else {
+                        statusText = "Finalizing Data and Building Table...";
+                    }
+                    
+                    progressText.textContent = `${Math.round(progress)}% Complete - ${statusText}`;
+
+                    if (progress < 100) {
+                        requestAnimationFrame(updateProgress);
+                    }
+                }
+            }
+
+            form.addEventListener('submit', function(event) {
+                if (document.getElementById('file').files.length === 0) {
+                    return;
+                }
+
+                // Hide the form and show the loading screen immediately
+                mainContainer.style.display = 'none';
+                loadingScreen.style.display = 'flex';
+                
+                // Start the progress simulation timer
+                startTime = Date.now();
+                updateProgress();
+                
+                // Ensure the bar reaches 100% right at the end of the expected wait time
+                setTimeout(() => {
+                    progressBar.style.width = '100%';
+                    progressText.textContent = `100% Complete - Redirecting to Results...`;
+                }, totalTimeMs);
+            });
+        });
     </script>
 </body>
 </html>
