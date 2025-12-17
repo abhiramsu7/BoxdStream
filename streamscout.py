@@ -22,6 +22,7 @@ class Movie:
         self.is_released = False
         self.release_date = None
         self.streaming_info = {}
+        self.media_type = "movie"  # NEW: track if it's movie or tv
 
     def __str__(self):
         if not self.is_released:
@@ -42,15 +43,21 @@ class Movie:
         else:
             ui_class = "released-unknown"
 
+        # Add media type badge to title
+        title_display = self.title
+        if self.media_type == "tv":
+            title_display = f"{self.title} [TV Series]"
+
         return {
-            "title": self.title,
+            "title": title_display,
             "year": self.year,
             "status": status_text,
             "ui_class": ui_class,
             "poster": (
                 f"https://image.tmdb.org/t/p/w342{self.poster_path}"
                 if self.poster_path else None
-            )
+            ),
+            "media_type": self.media_type
         }
 
 # =========================
@@ -76,6 +83,19 @@ class TMDBClient:
             return None
 
     def search_movie(self, movie):
+        """Search for a movie first, then try TV series if not found"""
+        # Try movie search first
+        if self._search_movie_endpoint(movie):
+            return True
+        
+        # If not found as movie, try TV series
+        if self._search_tv_endpoint(movie):
+            return True
+        
+        return False
+
+    def _search_movie_endpoint(self, movie):
+        """Search TMDB movie endpoint"""
         data = self._get(
             f"{self.base_url}/search/movie",
             {"api_key": self.api_key, "query": movie.title, "year": movie.year}
@@ -86,6 +106,7 @@ class TMDBClient:
         m = data["results"][0]
         movie.tmdb_id = m["id"]
         movie.poster_path = m.get("poster_path")
+        movie.media_type = "movie"
 
         if m.get("release_date"):
             movie.release_date = m["release_date"]
@@ -94,17 +115,49 @@ class TMDBClient:
                     m["release_date"], "%Y-%m-%d"
                 ).date() <= self.today
             except:
-                pass
+                movie.is_released = True  # Default to released if date parsing fails
+        elif movie.poster_path:
+            # If we have a poster but no release date, assume it's released
+            movie.is_released = True
+        
+        return True
+
+    def _search_tv_endpoint(self, movie):
+        """Search TMDB TV series endpoint"""
+        data = self._get(
+            f"{self.base_url}/search/tv",
+            {"api_key": self.api_key, "query": movie.title, "first_air_date_year": movie.year}
+        )
+        if not data or not data.get("results"):
+            return False
+
+        m = data["results"][0]
+        movie.tmdb_id = m["id"]
+        movie.poster_path = m.get("poster_path")
+        movie.media_type = "tv"
+
+        if m.get("first_air_date"):
+            movie.release_date = m["first_air_date"]
+            try:
+                movie.is_released = datetime.strptime(
+                    m["first_air_date"], "%Y-%m-%d"
+                ).date() <= self.today
+            except:
+                movie.is_released = True  # Default to released if date parsing fails
+        elif movie.poster_path:
+            # If we have a poster but no release date, assume it's released
+            movie.is_released = True
+        
         return True
 
     def get_providers(self, movie, region):
         if not movie.tmdb_id or not movie.is_released:
             return
 
-        data = self._get(
-            f"{self.base_url}/movie/{movie.tmdb_id}/watch/providers",
-            {"api_key": self.api_key}
-        )
+        # Use correct endpoint based on media type
+        endpoint = f"{self.base_url}/{movie.media_type}/{movie.tmdb_id}/watch/providers"
+        
+        data = self._get(endpoint, {"api_key": self.api_key})
         if not data or region not in data.get("results", {}):
             return
 
@@ -162,7 +215,8 @@ def index():
             "available_free": sum("Subscription" in r["status"] for r in results),
             "rent_or_buy": sum("Rent" in r["status"] for r in results),
             "unreleased": sum("Not Yet Released" in r["status"] for r in results),
-            "unknown": sum(r["ui_class"]=="released-unknown" for r in results)
+            "unknown": sum(r["ui_class"]=="released-unknown" for r in results),
+            "tv_series": sum(r["media_type"]=="tv" for r in results)
         }
 
         return render_template("results.html",

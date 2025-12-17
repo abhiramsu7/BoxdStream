@@ -30,7 +30,15 @@
     <button>Check Availability</button>
   </form>
 
-  <small>Optimized for Letterboxd CSV exports</small>
+  <small>
+    Optimized for Letterboxd CSV exports.<br>
+    CSV downloads work best on desktop browsers.
+  </small>
+
+  <!-- ✅ ADDED NOTE -->
+  <p class="availability-note">
+    Availability is refreshed automatically every time you upload your watchlist.
+  </p>
 </section>
 
 <footer class="footer">
@@ -42,7 +50,7 @@
 
 <div id="loader" class="loader hidden">
   <div class="spinner"></div>
-  <p>Scanning your watchlist…</p>
+  <p id="loaderText">Reading your watchlist…</p>
 </div>
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>

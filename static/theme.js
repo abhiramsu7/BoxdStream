@@ -1,13 +1,24 @@
-const toggle = document.getElementById('themeToggle');
+const toggle = document.getElementById("themeToggle");
+if(toggle){
+  toggle.onclick = () => {
+    document.documentElement.dataset.theme =
+      document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  };
+}
 
+function showLoader(){
+  const messages = [
+    "Reading your watchlist…",
+    "Matching titles with TMDB…",
+    "Checking streaming platforms…",
+    "Good taste ages better than streaming rights.",
+    "Because watchlists deserve closure."
+  ];
+  let i = 0;
+  setInterval(()=>{
+    const el = document.getElementById("loaderText");
+    if(el) el.textContent = messages[i++ % messages.length];
+  }, 2500);
 
-const saved = localStorage.getItem('theme');
-if (saved) document.documentElement.setAttribute('data-theme', saved);
-
-
-toggle.addEventListener('click', () => {
-const current = document.documentElement.getAttribute('data-theme');
-const next = current === 'dark' ? 'light' : 'dark';
-document.documentElement.setAttribute('data-theme', next);
-localStorage.setItem('theme', next);
-});
+  document.getElementById("loader").classList.remove("hidden");
+}

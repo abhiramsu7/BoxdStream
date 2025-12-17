@@ -2,35 +2,56 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <title>Results</title>
+  <title>Results • Watchlist</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
 <header class="nav">
-  <div class="logo">Results</div>
-  <button id="themeToggle">◐</button>
+  <div class="logo">Watchlist</div>
+  <a href="/" style="color:#9aa0b4;text-decoration:none">Upload another</a>
 </header>
 
 <section class="summary">
-  <div><strong>{{ summary.available_free }}</strong><span>Free</span></div>
-  <div><strong>{{ summary.rent_or_buy }}</strong><span>Rent</span></div>
-  <div><strong>{{ summary.unreleased }}</strong><span>Unreleased</span></div>
-  <div><strong>{{ summary.unknown }}</strong><span>Unknown</span></div>
+  <div><strong>{{ summary.available_free }}</strong><br>Free</div>
+  <div><strong>{{ summary.rent_or_buy }}</strong><br>Rent / Buy</div>
+  <div><strong>{{ summary.unreleased }}</strong><br>Unreleased</div>
 </section>
 
 <section class="grid">
-  {% for movie in results %}
+
+{% for movie in results %}
   <div class="card {{ movie.ui_class }}">
+
     {% if movie.poster %}
-      <img src="{{ movie.poster }}" class="poster">
+      <img
+        src="{{ movie.poster }}"
+        alt="{{ movie.title }} poster"
+        class="poster"
+        loading="lazy"
+      >
+    {% else %}
+      <div class="poster placeholder">
+        <span>No Poster</span>
+      </div>
     {% endif %}
-    <h3>{{ movie.title }} <span class="year">{{ movie.year }}</span></h3>
-    <p class="card-status">{{ movie.status }}</p>
+
+    <h3>{{ movie.title }}</h3>
+    <div class="year">{{ movie.year }}</div>
+    <div class="card-status">{{ movie.status }}</div>
+
   </div>
-  {% endfor %}
+{% endfor %}
+
 </section>
 
-<script src="{{ url_for('static', filename='theme.js') }}"></script>
+<footer class="footer">
+  <p>
+    Powered by TMDB • Data from Letterboxd<br>
+    <strong>Because watchlists deserve closure.</strong>
+  </p>
+</footer>
+
 </body>
 </html>
