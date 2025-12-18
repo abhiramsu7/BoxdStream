@@ -1,6 +1,7 @@
 import requests
 import csv
 import io
+import os
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -21,7 +22,7 @@ class Movie:
         self.is_released = False
         self.release_date = None
         self.streaming_info = {}
-        self.media_type = "movie"
+        self.media_type = "movie" # Default, updates dynamically
 
     def __str__(self):
         if not self.is_released:
@@ -43,8 +44,9 @@ class Movie:
             ui_class = "released-unknown"
 
         title_display = self.title
+        # Add visual indicator for TV Series
         if self.media_type == "tv":
-            title_display = f"{self.title} [TV Series]"
+            title_display = f"{self.title} (TV)"
 
         return {
             "title": title_display,
@@ -81,61 +83,58 @@ class TMDBClient:
             return None
 
     def search_movie(self, movie):
-        if self._search_movie_endpoint(movie):
-            return True
-        if self._search_tv_endpoint(movie):
-            return True
-        return False
-
-    def _search_movie_endpoint(self, movie):
-        params = {"api_key": self.api_key, "query": movie.title}
-        if movie.year and movie.year != "0000":
-            params["year"] = movie.year
-            
-        data = self._get(f"{self.base_url}/search/movie", params)
+        """
+        SMART SEARCH: Uses TMDB 'Multi' search to find the most popular result,
+        whether it is a Movie OR a TV Show.
+        """
+        params = {
+            "api_key": self.api_key, 
+            "query": movie.title,
+            "include_adult": "false"
+        }
+        
+        data = self._get(f"{self.base_url}/search/multi", params)
         if not data or not data.get("results"):
             return False
 
-        m = data["results"][0]
-        movie.tmdb_id = m["id"]
-        movie.poster_path = m.get("poster_path")
-        movie.media_type = "movie"
-        
-        if movie.year == "0000" and m.get("release_date"):
-            movie.year = m["release_date"].split("-")[0]
+        # Filter: Keep only Movies and TV (ignore actors/people)
+        valid_results = [
+            r for r in data["results"] 
+            if r["media_type"] in ["movie", "tv"]
+        ]
 
-        if m.get("release_date"):
-            movie.release_date = m["release_date"]
-            try:
-                movie.is_released = datetime.strptime(m["release_date"], "%Y-%m-%d").date() <= self.today
-            except:
-                movie.is_released = True
-        elif movie.poster_path:
-            movie.is_released = True
-        
-        return True
-
-    def _search_tv_endpoint(self, movie):
-        params = {"api_key": self.api_key, "query": movie.title}
-        if movie.year and movie.year != "0000":
-            params["first_air_date_year"] = movie.year
-            
-        data = self._get(f"{self.base_url}/search/tv", params)
-        if not data or not data.get("results"):
+        if not valid_results:
             return False
 
-        m = data["results"][0]
-        movie.tmdb_id = m["id"]
-        movie.poster_path = m.get("poster_path")
-        movie.media_type = "tv"
+        # LOGIC: Find the best match
+        best_match = None
         
-        if movie.year == "0000" and m.get("first_air_date"):
-            movie.year = m["first_air_date"].split("-")[0]
+        # If user provided a specific year, try to find exact match first
+        if movie.year and movie.year != "0000":
+            for r in valid_results:
+                r_date = r.get("release_date") or r.get("first_air_date")
+                if r_date and r_date.split("-")[0] == movie.year:
+                    best_match = r
+                    break
+        
+        # Fallback to the most popular result if no year match
+        if not best_match:
+            best_match = valid_results[0]
 
-        if m.get("first_air_date"):
-            movie.release_date = m["first_air_date"]
+        # Apply data
+        movie.media_type = best_match["media_type"]
+        movie.tmdb_id = best_match["id"]
+        movie.poster_path = best_match.get("poster_path")
+        
+        # Extract Date & Year
+        date_key = "release_date" if movie.media_type == "movie" else "first_air_date"
+        release_date = best_match.get(date_key)
+
+        if release_date:
+            movie.release_date = release_date
+            movie.year = release_date.split("-")[0]
             try:
-                movie.is_released = datetime.strptime(m["first_air_date"], "%Y-%m-%d").date() <= self.today
+                movie.is_released = datetime.strptime(release_date, "%Y-%m-%d").date() <= self.today
             except:
                 movie.is_released = True
         elif movie.poster_path:
@@ -147,7 +146,9 @@ class TMDBClient:
         if not movie.tmdb_id or not movie.is_released:
             return
 
+        # Dynamically use movie/tv endpoint
         endpoint = f"{self.base_url}/{movie.media_type}/{movie.tmdb_id}/watch/providers"
+        
         data = self._get(endpoint, {"api_key": self.api_key})
         if not data or region not in data.get("results", {}):
             return
@@ -187,7 +188,8 @@ class Watchlist:
 # =========================
 app = Flask(__name__)
 
-API_KEY = "5b421e05cad15891667ec28db3d9b9ac"
+# Secure key handling for Render, fallback to hardcoded for local
+API_KEY = os.environ.get("API_KEY", "5b421e05cad15891667ec28db3d9b9ac")
 DEFAULT_REGION = "IN"
 
 @app.route("/", methods=["GET", "POST"])
@@ -204,9 +206,6 @@ def index():
             
             if not title:
                 return render_template("index.html")
-            
-            if not year:
-                year = ""
             
             movie = Movie(title, year if year else "0000")
             wl = Watchlist()
@@ -239,5 +238,4 @@ def index():
     return render_template("index.html")
 
 if __name__ == "__main__":
-    # Host 0.0.0.0 makes it accessible to your mobile on the same WiFi
     app.run(debug=True, host='0.0.0.0')

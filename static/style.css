@@ -304,15 +304,35 @@ body{
 .autocomplete-item strong{
   color:var(--text);
   font-weight:600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  display: inline-block;
+  vertical-align: middle;
 }
 
+/* === NEW: BADGES === */
 .type-badge{
-  font-size:0.75rem;
-  padding:2px 8px;
-  background:rgba(124,124,255,0.2);
-  color:var(--accent);
+  font-size:0.7rem;
+  padding:2px 6px;
   border-radius:4px;
-  margin-left:8px;
+  font-weight:700;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  margin-left:10px;
+}
+
+.badge-movie {
+  background: rgba(124, 124, 255, 0.15); /* Blue-ish */
+  color: #7c7cff;
+  border: 1px solid rgba(124, 124, 255, 0.3);
+}
+
+.badge-tv {
+  background: rgba(34, 197, 94, 0.15); /* Green-ish */
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .hero-form input,
@@ -628,13 +648,19 @@ small{
 }
 
 /* ===== MOBILE RESPONSIVE ===== */
-/* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
   .nav{ padding:20px 24px; }
   .hero-bg{ min-height:auto; padding:40px 20px; }
   .hero h1{ font-size:2rem; }
-  .mode-toggle{ width:100%; max-width:350px; }
-  .mode-btn{ flex:1; padding:10px 16px; font-size:0.85rem; }
+  
+  /* HIDE CSV BUTTON ON MOBILE */
+  .mode-btn[onclick="switchMode('csv')"] {
+    display: none !important;
+  }
+  
+  /* Make Search Button Full Width */
+  .mode-btn { width: 100%; }
+
   .hero-form{ flex-direction:column; width:100%; max-width:350px; }
   .hero-form > div, .hero-form input, .hero-form select, .hero-form button{ width:100% !important; flex:none !important; }
   .search-input{ width:100% !important; }
@@ -648,11 +674,10 @@ small{
   .summary div strong{ font-size:1.8rem; }
 
   /* FIXED FILTER BAR OVERLAP */
-  
   .filter-bar-container { 
     padding: 0 20px; 
     justify-content: start; 
-    margin-top: 0; /* Reset margin for mobile */
+    margin-top: 0; 
     margin-bottom: 20px;
   }
   .filter-bar { justify-content: start; }

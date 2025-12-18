@@ -125,7 +125,18 @@
     });
   });
 
-  // Autocomplete functionality
+  // === NEW: MOBILE DETECTION TO HIDE CSV ===
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.innerWidth < 768) {
+        // Force switch to search mode
+        switchMode('search');
+        // Visually hide CSV toggle button
+        const csvBtn = document.querySelector(".mode-btn[onclick=\"switchMode('csv')\"]");
+        if(csvBtn) csvBtn.style.display = 'none';
+    }
+  });
+
+  // === UPDATED AUTOCOMPLETE (MOVIES + TV + BADGES) ===
   let autocompleteTimeout;
   const titleInput = document.getElementById('titleInput');
   const autocompleteDropdown = document.getElementById('autocompleteDropdown');
@@ -141,33 +152,60 @@
       }
       
       autocompleteTimeout = setTimeout(() => {
-        fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}`)
+        // Use Multi-Search
+        fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}&include_adult=false`)
           .then(res => res.json())
           .then(data => {
             if (data.results && data.results.length > 0) {
-              const results = data.results.slice(0, 5).filter(item => 
+              
+              // 1. FILTER: Keep only Movies and TV
+              let results = data.results.filter(item => 
                 item.media_type === 'movie' || item.media_type === 'tv'
               );
+
+              // 2. SORT: Exact Match -> Movies -> Popularity
+              results.sort((a, b) => {
+                 const titleA = (a.title || a.name).toLowerCase();
+                 const titleB = (b.title || b.name).toLowerCase();
+                 const queryLower = query.toLowerCase();
+
+                 if (titleA === queryLower && titleB !== queryLower) return -1;
+                 if (titleB === queryLower && titleA !== queryLower) return 1;
+                 if (titleA === titleB) return a.media_type === 'movie' ? -1 : 1;
+                 return b.popularity - a.popularity;
+              });
+
+              // 3. SHOW TOP 8
+              results = results.slice(0, 8);
               
               if (results.length > 0) {
                 autocompleteDropdown.innerHTML = results.map(item => {
                   const title = item.title || item.name;
-                  const year = item.release_date ? item.release_date.split('-')[0] : 
-                               item.first_air_date ? item.first_air_date.split('-')[0] : '';
-                  const type = item.media_type === 'tv' ? 'TV' : 'Movie';
+                  const date = item.release_date || item.first_air_date;
+                  const year = date ? date.split('-')[0] : 'N/A';
+                  const typeLabel = item.media_type === 'movie' ? 'MOVIE' : 'SERIES';
+                  const typeClass = item.media_type === 'movie' ? 'badge-movie' : 'badge-tv';
+
                   return `
                     <div class="autocomplete-item" data-title="${title}" data-year="${year}">
-                      <strong>${title}</strong> ${year ? `<span style="color:var(--muted);">(${year})</span>` : ''} <span class="type-badge">${type}</span>
+                      <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                        <span>
+                          <strong>${title}</strong> 
+                          <span style="color:var(--muted); font-size:0.9em;">(${year})</span>
+                        </span>
+                        <span class="type-badge ${typeClass}">${typeLabel}</span>
+                      </div>
                     </div>
                   `;
                 }).join('');
                 autocompleteDropdown.classList.remove('hidden');
                 
+                // Add click listeners
                 document.querySelectorAll('.autocomplete-item').forEach(item => {
                   item.addEventListener('click', function() {
                     titleInput.value = this.dataset.title;
                     const yearInput = document.querySelector('#search-form .year-input');
-                    if (yearInput) {
+                    if (yearInput && this.dataset.year !== 'N/A') {
                       yearInput.value = this.dataset.year;
                     }
                     autocompleteDropdown.classList.add('hidden');
