@@ -14,15 +14,15 @@ MAX_WORKERS = 10
 # MOVIE MODEL
 # =========================
 class Movie:
-    def __init__(self, title, year):
+    def __init__(self, title, year, tmdb_id=None, media_type="movie"):
         self.title = title
         self.year = year
-        self.tmdb_id = None
+        self.tmdb_id = tmdb_id
         self.poster_path = None
         self.is_released = False
         self.release_date = None
         self.streaming_info = {}
-        self.media_type = "movie" # Default, updates dynamically
+        self.media_type = media_type
 
     def __str__(self):
         if not self.is_released:
@@ -32,8 +32,21 @@ class Movie:
         providers = [f"{k} ({v})" for k, v in self.streaming_info.items()]
         return f"Available on: {', '.join(providers)}"
 
+    def get_category(self):
+        """Returns the single primary category for the summary counter"""
+        status = str(self)
+        if "Subscription" in status:
+            return "available_free"
+        elif "Rent" in status or "Buy" in status:
+            return "rent_or_buy"
+        elif "Not Yet Released" in status:
+            return "unreleased"
+        else:
+            return "unknown"
+
     def to_dict(self):
         status_text = str(self)
+        # UI Class logic
         if "Subscription" in status_text:
             ui_class = "available"
         elif "Rent" in status_text:
@@ -44,7 +57,6 @@ class Movie:
             ui_class = "released-unknown"
 
         title_display = self.title
-        # Add visual indicator for TV Series
         if self.media_type == "tv":
             title_display = f"{self.title} (TV)"
 
@@ -84,9 +96,17 @@ class TMDBClient:
 
     def search_movie(self, movie):
         """
-        SMART SEARCH: Uses TMDB 'Multi' search to find the most popular result,
-        whether it is a Movie OR a TV Show.
+        OPTIMIZED SEARCH:
+        1. If movie already has an ID (from dropdown), fetch details directly.
+        2. If not, use Smart Multi-Search.
         """
+        
+        # === OPTIMIZATION: DIRECT ID LOOKUP ===
+        if movie.tmdb_id:
+            # We already know exactly what to look for. No searching needed.
+            return self._fetch_details_by_id(movie)
+
+        # === FALLBACK: TEXT SEARCH (For CSVs) ===
         params = {
             "api_key": self.api_key, 
             "query": movie.title,
@@ -97,19 +117,11 @@ class TMDBClient:
         if not data or not data.get("results"):
             return False
 
-        # Filter: Keep only Movies and TV (ignore actors/people)
-        valid_results = [
-            r for r in data["results"] 
-            if r["media_type"] in ["movie", "tv"]
-        ]
-
+        valid_results = [r for r in data["results"] if r["media_type"] in ["movie", "tv"]]
         if not valid_results:
             return False
 
-        # LOGIC: Find the best match
         best_match = None
-        
-        # If user provided a specific year, try to find exact match first
         if movie.year and movie.year != "0000":
             for r in valid_results:
                 r_date = r.get("release_date") or r.get("first_air_date")
@@ -117,18 +129,26 @@ class TMDBClient:
                     best_match = r
                     break
         
-        # Fallback to the most popular result if no year match
         if not best_match:
             best_match = valid_results[0]
 
-        # Apply data
         movie.media_type = best_match["media_type"]
         movie.tmdb_id = best_match["id"]
-        movie.poster_path = best_match.get("poster_path")
         
-        # Extract Date & Year
+        return self._fetch_details_by_id(movie)
+
+    def _fetch_details_by_id(self, movie):
+        """Helper to get poster and release date once we have an ID"""
+        endpoint = f"{self.base_url}/{movie.media_type}/{movie.tmdb_id}"
+        data = self._get(endpoint, {"api_key": self.api_key})
+        
+        if not data:
+            return False
+
+        movie.poster_path = data.get("poster_path")
+        
         date_key = "release_date" if movie.media_type == "movie" else "first_air_date"
-        release_date = best_match.get(date_key)
+        release_date = data.get(date_key)
 
         if release_date:
             movie.release_date = release_date
@@ -139,14 +159,13 @@ class TMDBClient:
                 movie.is_released = True
         elif movie.poster_path:
             movie.is_released = True
-        
+            
         return True
 
     def get_providers(self, movie, region):
         if not movie.tmdb_id or not movie.is_released:
             return
 
-        # Dynamically use movie/tv endpoint
         endpoint = f"{self.base_url}/{movie.media_type}/{movie.tmdb_id}/watch/providers"
         
         data = self._get(endpoint, {"api_key": self.api_key})
@@ -158,7 +177,18 @@ class TMDBClient:
                            ("buy","Rent/Buy (Extra Cost)"),
                            ("rent","Rent (Extra Cost)")]:
             for p in r.get(key, []):
-                movie.streaming_info.setdefault(p["provider_name"], label)
+                
+                provider_name = p["provider_name"]
+                p_lower = provider_name.lower()
+
+                if region == "IN":
+                    if "hotstar" in p_lower or "jio" in p_lower or "disney" in p_lower:
+                        provider_name = "JioHotstar"
+                else:
+                    if "hotstar" in p_lower:
+                        provider_name = "Disney+"
+
+                movie.streaming_info.setdefault(provider_name, label)
 
 # =========================
 # WATCHLIST
@@ -177,7 +207,7 @@ class Watchlist:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
             for m in self.movies:
                 ex.submit(self._process_one, m, client, region)
-        return [m.to_dict() for m in self.movies]
+        return self.movies  # Return objects, not dicts, so we can count categories
 
     def _process_one(self, movie, client, region):
         if client.search_movie(movie):
@@ -188,7 +218,6 @@ class Watchlist:
 # =========================
 app = Flask(__name__)
 
-# Secure key handling for Render, fallback to hardcoded for local
 API_KEY = os.environ.get("API_KEY", "5b421e05cad15891667ec28db3d9b9ac")
 DEFAULT_REGION = "IN"
 
@@ -198,21 +227,24 @@ def index():
         mode = request.form.get("mode", "csv")
         region = request.form.get("region_code", DEFAULT_REGION)
         client = TMDBClient(API_KEY)
+        
+        results_objects = []
 
-        # Handle individual search
         if mode == "search":
             title = request.form.get("title", "").strip()
-            year = request.form.get("year", "").strip()
+            # We assume these are populated by the JS Autocomplete
+            tmdb_id = request.form.get("tmdb_id")
+            media_type = request.form.get("media_type", "movie")
             
             if not title:
                 return render_template("index.html")
             
-            movie = Movie(title, year if year else "0000")
+            # Pass ID directly if we have it
+            movie = Movie(title, "0000", tmdb_id=tmdb_id, media_type=media_type)
             wl = Watchlist()
             wl.movies = [movie]
-            results = wl.process(client, region)
+            results_objects = wl.process(client, region)
         
-        # Handle CSV upload
         else:
             file = request.files.get("file")
             if not file:
@@ -220,18 +252,23 @@ def index():
             
             wl = Watchlist()
             wl.load_csv(io.BytesIO(file.read()))
-            results = wl.process(client, region)
+            results_objects = wl.process(client, region)
 
+        # === FIXED SUMMARY COUNTER (Priority Based) ===
+        categories = [m.get_category() for m in results_objects]
         summary = {
-            "available_free": sum("Subscription" in r["status"] for r in results),
-            "rent_or_buy": sum("Rent" in r["status"] for r in results),
-            "unreleased": sum("Not Yet Released" in r["status"] for r in results),
-            "unknown": sum(r["ui_class"]=="released-unknown" for r in results),
-            "tv_series": sum(r["media_type"]=="tv" for r in results)
+            "available_free": categories.count("available_free"),
+            "rent_or_buy": categories.count("rent_or_buy"),
+            "unreleased": categories.count("unreleased"),
+            "unknown": categories.count("unknown"),
+            "tv_series": sum(1 for m in results_objects if m.media_type == "tv")
         }
+        
+        # Convert to dicts for rendering
+        results_dicts = [m.to_dict() for m in results_objects]
 
         return render_template("results.html",
-                               results=results,
+                               results=results_dicts,
                                summary=summary,
                                mode=mode)
 

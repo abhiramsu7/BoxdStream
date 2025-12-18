@@ -44,11 +44,15 @@
 
     <form method="POST" class="hero-form search-form hidden" id="search-form">
       <input type="hidden" name="mode" value="search">
+      
+      <input type="hidden" name="tmdb_id" id="tmdbIdInput">
+      <input type="hidden" name="media_type" id="mediaTypeInput">
+
       <div style="position:relative;flex:2;min-width:200px;">
         <input 
           type="text" 
           name="title" 
-          placeholder="Movie/Series title (e.g., Inception)" 
+          placeholder="Search for a movie or TV show..." 
           class="search-input"
           id="titleInput"
           autocomplete="off"
@@ -56,14 +60,7 @@
         >
         <div class="autocomplete-dropdown hidden" id="autocompleteDropdown"></div>
       </div>
-      <input 
-        type="text" 
-        name="year" 
-        placeholder="Year" 
-        class="year-input"
-        pattern="[0-9]*"
-        maxlength="4"
-      >
+      
       <select name="region_code">
         <option value="IN">India (IN)</option>
         <option value="US">United States (US)</option>
@@ -94,6 +91,7 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
+  // ... [Loader Logic remains the same] ...
   const loadingMessages = [
     "Reading your watchlist…",
     "Matching titles with TMDB…",
@@ -109,10 +107,8 @@
     const loader = document.getElementById('loader');
     const loadingText = document.getElementById('loadingText');
     loader.classList.remove('hidden');
-    
     messageIndex = 0;
     loadingText.textContent = loadingMessages[0];
-    
     loadingInterval = setInterval(() => {
       messageIndex = (messageIndex + 1) % loadingMessages.length;
       loadingText.textContent = loadingMessages[messageIndex];
@@ -125,24 +121,27 @@
     });
   });
 
-  // === NEW: MOBILE DETECTION TO HIDE CSV ===
   document.addEventListener('DOMContentLoaded', function() {
     if (window.innerWidth < 768) {
-        // Force switch to search mode
         switchMode('search');
-        // Visually hide CSV toggle button
         const csvBtn = document.querySelector(".mode-btn[onclick=\"switchMode('csv')\"]");
         if(csvBtn) csvBtn.style.display = 'none';
     }
   });
 
-  // === UPDATED AUTOCOMPLETE (MOVIES + TV + BADGES) ===
+  // === OPTIMIZED AUTOCOMPLETE ===
   let autocompleteTimeout;
   const titleInput = document.getElementById('titleInput');
   const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+  const tmdbIdInput = document.getElementById('tmdbIdInput');
+  const mediaTypeInput = document.getElementById('mediaTypeInput');
 
   if (titleInput && autocompleteDropdown) {
+    
+    // Clear hidden inputs when user types (so we don't send wrong ID if they change text)
     titleInput.addEventListener('input', function() {
+      tmdbIdInput.value = ""; 
+      
       clearTimeout(autocompleteTimeout);
       const query = this.value.trim();
       
@@ -152,18 +151,15 @@
       }
       
       autocompleteTimeout = setTimeout(() => {
-        // Use Multi-Search
         fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}&include_adult=false`)
           .then(res => res.json())
           .then(data => {
             if (data.results && data.results.length > 0) {
               
-              // 1. FILTER: Keep only Movies and TV
               let results = data.results.filter(item => 
                 item.media_type === 'movie' || item.media_type === 'tv'
               );
 
-              // 2. SORT: Exact Match -> Movies -> Popularity
               results.sort((a, b) => {
                  const titleA = (a.title || a.name).toLowerCase();
                  const titleB = (b.title || b.name).toLowerCase();
@@ -175,7 +171,6 @@
                  return b.popularity - a.popularity;
               });
 
-              // 3. SHOW TOP 8
               results = results.slice(0, 8);
               
               if (results.length > 0) {
@@ -187,7 +182,11 @@
                   const typeClass = item.media_type === 'movie' ? 'badge-movie' : 'badge-tv';
 
                   return `
-                    <div class="autocomplete-item" data-title="${title}" data-year="${year}">
+                    <div class="autocomplete-item" 
+                         data-title="${title}" 
+                         data-year="${year}" 
+                         data-id="${item.id}"
+                         data-type="${item.media_type}">
                       <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                         <span>
                           <strong>${title}</strong> 
@@ -200,14 +199,15 @@
                 }).join('');
                 autocompleteDropdown.classList.remove('hidden');
                 
-                // Add click listeners
+                // === CLICK HANDLER: SETS HIDDEN INPUTS ===
                 document.querySelectorAll('.autocomplete-item').forEach(item => {
                   item.addEventListener('click', function() {
                     titleInput.value = this.dataset.title;
-                    const yearInput = document.querySelector('#search-form .year-input');
-                    if (yearInput && this.dataset.year !== 'N/A') {
-                      yearInput.value = this.dataset.year;
-                    }
+                    
+                    // Set the hidden inputs!
+                    tmdbIdInput.value = this.dataset.id;
+                    mediaTypeInput.value = this.dataset.type;
+                    
                     autocompleteDropdown.classList.add('hidden');
                   });
                 });
