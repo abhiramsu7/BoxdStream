@@ -2,44 +2,83 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <title>Watchlist</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoxdStream • Watchlist Checker</title>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
 <header class="nav">
-  <div class="logo">Watchlist</div>
-  <button id="themeToggle">◐</button>
+  <a href="/" class="logo">
+    <span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span>
+  </a>
+  <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
 </header>
 
-<section class="hero hero-bg">
-  <h1>Know exactly <span>where to watch</span><br>your movies.</h1>
-  <p>Upload your watchlist. We handle the rest.</p>
+<main class="hero-bg">
+  <div class="hero">
+    <h1>Turn your <span>Letterboxd</span><br>lists into <span>Weekend Plans</span>.</h1>
+    <p style="color:var(--muted);max-width:600px;margin:16px auto">
+      Check where your favorite movies and shows are streaming across 20+ platforms instantly.
+    </p>
 
-  <form method="POST" enctype="multipart/form-data" class="hero-form" onsubmit="showLoader()">
-    <input type="file" name="file" required>
-    <select name="region_code">
-      <option value="IN">India</option>
-      <option value="US">USA</option>
-      <option value="GB">UK</option>
-      <option value="CA">Canada</option>
-      <option value="DE">Germany</option>
-      <option value="AU">Australia</option>
-    </select>
-    <button>Check Availability</button>
-  </form>
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="switchMode('csv')">Upload CSV</button>
+      <button class="mode-btn" onclick="switchMode('search')">Search Title</button>
+    </div>
 
-  <small>
-    Optimized for Letterboxd CSV exports.<br>
-    CSV downloads work best on desktop browsers.
-  </small>
+    <form method="POST" enctype="multipart/form-data" class="hero-form" id="csv-form">
+      <input type="hidden" name="mode" value="csv">
+      <input type="file" name="file" accept=".csv" required>
+      <select name="region_code">
+        <option value="IN">India (IN)</option>
+        <option value="US">United States (US)</option>
+        <option value="GB">United Kingdom (GB)</option>
+        <option value="CA">Canada (CA)</option>
+        <option value="AU">Australia (AU)</option>
+        <option value="DE">Germany (DE)</option>
+      </select>
+      <button type="submit">Check Watchlist</button>
+    </form>
 
-  <!-- ✅ ADDED NOTE -->
-  <p class="availability-note">
-    Availability is refreshed automatically every time you upload your watchlist.
-  </p>
-</section>
+    <form method="POST" class="hero-form search-form hidden" id="search-form">
+      <input type="hidden" name="mode" value="search">
+      <div style="position:relative;flex:2;min-width:200px;">
+        <input 
+          type="text" 
+          name="title" 
+          placeholder="Movie/Series title (e.g., Inception)" 
+          class="search-input"
+          id="titleInput"
+          autocomplete="off"
+          required
+        >
+        <div class="autocomplete-dropdown hidden" id="autocompleteDropdown"></div>
+      </div>
+      <input 
+        type="text" 
+        name="year" 
+        placeholder="Year" 
+        class="year-input"
+        pattern="[0-9]*"
+        maxlength="4"
+      >
+      <select name="region_code">
+        <option value="IN">India (IN)</option>
+        <option value="US">United States (US)</option>
+        <option value="GB">United Kingdom (GB)</option>
+        <option value="CA">Canada (CA)</option>
+        <option value="AU">Australia (AU)</option>
+      </select>
+      <button type="submit">Search</button>
+    </form>
+
+    <small class="availability-note">
+      💡 Export your watchlist from Letterboxd or search for individual titles to get started.
+    </small>
+  </div>
+</main>
 
 <footer class="footer">
   <p>
@@ -48,11 +87,130 @@
   </p>
 </footer>
 
-<div id="loader" class="loader hidden">
+<div class="loader hidden" id="loader">
   <div class="spinner"></div>
-  <p id="loaderText">Reading your watchlist…</p>
+  <p class="loading-text" id="loadingText">Reading your watchlist…</p>
 </div>
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
+<script>
+  const loadingMessages = [
+    "Reading your watchlist…",
+    "Matching titles with TMDB…",
+    "Checking streaming platforms…",
+    "Good taste ages better than streaming rights.",
+    "Because watchlists deserve closure."
+  ];
+
+  let messageIndex = 0;
+  let loadingInterval;
+
+  function showLoader() {
+    const loader = document.getElementById('loader');
+    const loadingText = document.getElementById('loadingText');
+    loader.classList.remove('hidden');
+    
+    messageIndex = 0;
+    loadingText.textContent = loadingMessages[0];
+    
+    loadingInterval = setInterval(() => {
+      messageIndex = (messageIndex + 1) % loadingMessages.length;
+      loadingText.textContent = loadingMessages[messageIndex];
+    }, 2500);
+  }
+
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function() {
+      showLoader();
+    });
+  });
+
+  // Autocomplete functionality
+  let autocompleteTimeout;
+  const titleInput = document.getElementById('titleInput');
+  const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+
+  if (titleInput && autocompleteDropdown) {
+    titleInput.addEventListener('input', function() {
+      clearTimeout(autocompleteTimeout);
+      const query = this.value.trim();
+      
+      if (query.length < 2) {
+        autocompleteDropdown.classList.add('hidden');
+        return;
+      }
+      
+      autocompleteTimeout = setTimeout(() => {
+        fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.results && data.results.length > 0) {
+              const results = data.results.slice(0, 5).filter(item => 
+                item.media_type === 'movie' || item.media_type === 'tv'
+              );
+              
+              if (results.length > 0) {
+                autocompleteDropdown.innerHTML = results.map(item => {
+                  const title = item.title || item.name;
+                  const year = item.release_date ? item.release_date.split('-')[0] : 
+                               item.first_air_date ? item.first_air_date.split('-')[0] : '';
+                  const type = item.media_type === 'tv' ? 'TV' : 'Movie';
+                  return `
+                    <div class="autocomplete-item" data-title="${title}" data-year="${year}">
+                      <strong>${title}</strong> ${year ? `<span style="color:var(--muted);">(${year})</span>` : ''} <span class="type-badge">${type}</span>
+                    </div>
+                  `;
+                }).join('');
+                autocompleteDropdown.classList.remove('hidden');
+                
+                document.querySelectorAll('.autocomplete-item').forEach(item => {
+                  item.addEventListener('click', function() {
+                    titleInput.value = this.dataset.title;
+                    const yearInput = document.querySelector('#search-form .year-input');
+                    if (yearInput) {
+                      yearInput.value = this.dataset.year;
+                    }
+                    autocompleteDropdown.classList.add('hidden');
+                  });
+                });
+              } else {
+                autocompleteDropdown.classList.add('hidden');
+              }
+            } else {
+              autocompleteDropdown.classList.add('hidden');
+            }
+          })
+          .catch(() => {
+            autocompleteDropdown.classList.add('hidden');
+          });
+      }, 300);
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!titleInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
+        autocompleteDropdown.classList.add('hidden');
+      }
+    });
+  }
+
+  function switchMode(mode) {
+    const csvForm = document.getElementById('csv-form');
+    const searchForm = document.getElementById('search-form');
+    const buttons = document.querySelectorAll('.mode-btn');
+    
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    if (mode === 'csv') {
+      csvForm.classList.remove('hidden');
+      searchForm.classList.add('hidden');
+      buttons[0].classList.add('active');
+    } else if (mode === 'search') {
+      csvForm.classList.add('hidden');
+      searchForm.classList.remove('hidden');
+      buttons[1].classList.add('active');
+    }
+  }
+</script>
+
 </body>
 </html>

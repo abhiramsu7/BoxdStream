@@ -1,24 +1,26 @@
-const toggle = document.getElementById("themeToggle");
-if(toggle){
-  toggle.onclick = () => {
-    document.documentElement.dataset.theme =
-      document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-  };
+// Theme toggle functionality
+function toggleTheme() {
+  const html = document.documentElement;
+  const currentTheme = html.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  
+  // Update button emoji
+  const btn = document.querySelector('.theme-toggle');
+  if (btn) {
+    btn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+  }
 }
 
-function showLoader(){
-  const messages = [
-    "Reading your watchlist…",
-    "Matching titles with TMDB…",
-    "Checking streaming platforms…",
-    "Good taste ages better than streaming rights.",
-    "Because watchlists deserve closure."
-  ];
-  let i = 0;
-  setInterval(()=>{
-    const el = document.getElementById("loaderText");
-    if(el) el.textContent = messages[i++ % messages.length];
-  }, 2500);
-
-  document.getElementById("loader").classList.remove("hidden");
-}
+// Load saved theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  
+  const btn = document.querySelector('.theme-toggle');
+  if (btn) {
+    btn.textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+  }
+});

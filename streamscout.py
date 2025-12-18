@@ -1,11 +1,10 @@
 import requests
 import csv
-import os
 import io
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request
 from concurrent.futures import ThreadPoolExecutor
 
 MAX_WORKERS = 10
@@ -22,7 +21,7 @@ class Movie:
         self.is_released = False
         self.release_date = None
         self.streaming_info = {}
-        self.media_type = "movie"  # NEW: track if it's movie or tv
+        self.media_type = "movie"
 
     def __str__(self):
         if not self.is_released:
@@ -43,7 +42,6 @@ class Movie:
         else:
             ui_class = "released-unknown"
 
-        # Add media type badge to title
         title_display = self.title
         if self.media_type == "tv":
             title_display = f"{self.title} [TV Series]"
@@ -83,23 +81,18 @@ class TMDBClient:
             return None
 
     def search_movie(self, movie):
-        """Search for a movie first, then try TV series if not found"""
-        # Try movie search first
         if self._search_movie_endpoint(movie):
             return True
-        
-        # If not found as movie, try TV series
         if self._search_tv_endpoint(movie):
             return True
-        
         return False
 
     def _search_movie_endpoint(self, movie):
-        """Search TMDB movie endpoint"""
-        data = self._get(
-            f"{self.base_url}/search/movie",
-            {"api_key": self.api_key, "query": movie.title, "year": movie.year}
-        )
+        params = {"api_key": self.api_key, "query": movie.title}
+        if movie.year and movie.year != "0000":
+            params["year"] = movie.year
+            
+        data = self._get(f"{self.base_url}/search/movie", params)
         if not data or not data.get("results"):
             return False
 
@@ -107,27 +100,27 @@ class TMDBClient:
         movie.tmdb_id = m["id"]
         movie.poster_path = m.get("poster_path")
         movie.media_type = "movie"
+        
+        if movie.year == "0000" and m.get("release_date"):
+            movie.year = m["release_date"].split("-")[0]
 
         if m.get("release_date"):
             movie.release_date = m["release_date"]
             try:
-                movie.is_released = datetime.strptime(
-                    m["release_date"], "%Y-%m-%d"
-                ).date() <= self.today
+                movie.is_released = datetime.strptime(m["release_date"], "%Y-%m-%d").date() <= self.today
             except:
-                movie.is_released = True  # Default to released if date parsing fails
+                movie.is_released = True
         elif movie.poster_path:
-            # If we have a poster but no release date, assume it's released
             movie.is_released = True
         
         return True
 
     def _search_tv_endpoint(self, movie):
-        """Search TMDB TV series endpoint"""
-        data = self._get(
-            f"{self.base_url}/search/tv",
-            {"api_key": self.api_key, "query": movie.title, "first_air_date_year": movie.year}
-        )
+        params = {"api_key": self.api_key, "query": movie.title}
+        if movie.year and movie.year != "0000":
+            params["first_air_date_year"] = movie.year
+            
+        data = self._get(f"{self.base_url}/search/tv", params)
         if not data or not data.get("results"):
             return False
 
@@ -135,17 +128,17 @@ class TMDBClient:
         movie.tmdb_id = m["id"]
         movie.poster_path = m.get("poster_path")
         movie.media_type = "tv"
+        
+        if movie.year == "0000" and m.get("first_air_date"):
+            movie.year = m["first_air_date"].split("-")[0]
 
         if m.get("first_air_date"):
             movie.release_date = m["first_air_date"]
             try:
-                movie.is_released = datetime.strptime(
-                    m["first_air_date"], "%Y-%m-%d"
-                ).date() <= self.today
+                movie.is_released = datetime.strptime(m["first_air_date"], "%Y-%m-%d").date() <= self.today
             except:
-                movie.is_released = True  # Default to released if date parsing fails
+                movie.is_released = True
         elif movie.poster_path:
-            # If we have a poster but no release date, assume it's released
             movie.is_released = True
         
         return True
@@ -154,9 +147,7 @@ class TMDBClient:
         if not movie.tmdb_id or not movie.is_released:
             return
 
-        # Use correct endpoint based on media type
         endpoint = f"{self.base_url}/{movie.media_type}/{movie.tmdb_id}/watch/providers"
-        
         data = self._get(endpoint, {"api_key": self.api_key})
         if not data or region not in data.get("results", {}):
             return
@@ -202,14 +193,35 @@ DEFAULT_REGION = "IN"
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        file = request.files.get("file")
+        mode = request.form.get("mode", "csv")
         region = request.form.get("region_code", DEFAULT_REGION)
-
-        wl = Watchlist()
-        wl.load_csv(io.BytesIO(file.read()))
-
         client = TMDBClient(API_KEY)
-        results = wl.process(client, region)
+
+        # Handle individual search
+        if mode == "search":
+            title = request.form.get("title", "").strip()
+            year = request.form.get("year", "").strip()
+            
+            if not title:
+                return render_template("index.html")
+            
+            if not year:
+                year = ""
+            
+            movie = Movie(title, year if year else "0000")
+            wl = Watchlist()
+            wl.movies = [movie]
+            results = wl.process(client, region)
+        
+        # Handle CSV upload
+        else:
+            file = request.files.get("file")
+            if not file:
+                return render_template("index.html")
+            
+            wl = Watchlist()
+            wl.load_csv(io.BytesIO(file.read()))
+            results = wl.process(client, region)
 
         summary = {
             "available_free": sum("Subscription" in r["status"] for r in results),
@@ -221,9 +233,11 @@ def index():
 
         return render_template("results.html",
                                results=results,
-                               summary=summary)
+                               summary=summary,
+                               mode=mode)
 
     return render_template("index.html")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Host 0.0.0.0 makes it accessible to your mobile on the same WiFi
+    app.run(debug=True, host='0.0.0.0')
