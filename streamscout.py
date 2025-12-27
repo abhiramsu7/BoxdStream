@@ -45,7 +45,19 @@ class Movie:
             return "unknown"
 
     def to_dict(self):
-        status_text = str(self)
+        # Create a clean list of providers for the frontend
+        # Example: [{'name': 'Netflix', 'text': 'Subscription'}, {'name': 'Prime', 'text': 'Rent'}]
+        providers_list = []
+        status_parts = []
+        
+        if self.streaming_info:
+            for name, label in self.streaming_info.items():
+                providers_list.append({"name": name, "label": label})
+                status_parts.append(f"{name} ({label})")
+            status_text = f"Available on: {', '.join(status_parts)}"
+        else:
+            status_text = "Released – Availability Unknown" if self.is_released else "Not Yet Released"
+
         # UI Class logic
         if "Subscription" in status_text:
             ui_class = "available"
@@ -63,13 +75,15 @@ class Movie:
         return {
             "title": title_display,
             "year": self.year,
-            "status": status_text,
+            "status": status_text,         # Keep for backup
+            "providers": providers_list,   # NEW: Structured Data
             "ui_class": ui_class,
             "poster": (
                 f"https://image.tmdb.org/t/p/w342{self.poster_path}"
                 if self.poster_path else None
             ),
-            "media_type": self.media_type
+            "media_type": self.media_type,
+            "justwatch_link": f"https://www.justwatch.com/in/search?q={self.title}"
         }
 
 # =========================

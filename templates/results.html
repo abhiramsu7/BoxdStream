@@ -13,44 +13,28 @@
   <a href="/" class="logo">
     <span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span>
   </a>
-  
   <div class="nav-right">
     <div class="nav-toolbar">
-      <button class="icon-btn" onclick="window.history.back()" title="Go Back">←</button>
-      <button class="icon-btn" onclick="window.history.forward()" title="Go Forward">→</button>
+      <a href="/" class="icon-btn" title="Home">🏠</a>
       <div class="separator"></div>
-      <a href="/" class="icon-btn" title="Home / New Search">🏠</a>
-      <div class="separator"></div>
-      <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+      <button class="theme-btn" onclick="toggleTheme()">🌙</button>
     </div>
   </div>
 </header>
 
 <section class="summary">
-  <div>
-    <strong>{{ summary.available_free }}</strong>
-    <span>Free to Watch</span>
-  </div>
-  <div>
-    <strong>{{ summary.rent_or_buy }}</strong>
-    <span>Rent / Buy</span>
-  </div>
-  <div>
-    <strong>{{ summary.unreleased }}</strong>
-    <span>Coming Soon</span>
-  </div>
+  <div><strong>{{ summary.available_free }}</strong><span>Free to Watch</span></div>
+  <div><strong>{{ summary.rent_or_buy }}</strong><span>Rent / Buy</span></div>
+  <div><strong>{{ summary.unreleased }}</strong><span>Coming Soon</span></div>
 </section>
 
 <div class="filter-bar-container">
   <div class="filter-bar">
     <button class="filter-btn active" onclick="filterMovies('all', this)">All</button>
-    
     <button class="filter-btn" onclick="filterMovies('Netflix', this)">Netflix</button>
     <button class="filter-btn" onclick="filterMovies('Prime', this)">Prime Video</button>
-    
     <button class="filter-btn" onclick="filterMovies('JioHotstar', this)">JioHotstar</button>
     <button class="filter-btn" onclick="filterMovies('Disney', this)">Disney+</button>
-    
     <button class="filter-btn" onclick="filterMovies('Apple', this)">Apple TV</button>
     <button class="filter-btn" onclick="filterMovies('Rent', this)">Rent/Buy</button>
   </div>
@@ -59,32 +43,41 @@
 <section class="grid {% if results|length == 1 %}single-result{% endif %}">
 {% for movie in results %}
   <div class="card {{ movie.ui_class }}">
-
     {% if movie.poster %}
-      <img src="{{ movie.poster }}" alt="{{ movie.title }} poster" class="poster" loading="lazy">
+      <img src="{{ movie.poster }}" alt="{{ movie.title }}" class="poster" loading="lazy">
     {% else %}
       <div class="poster placeholder"><span>No Poster</span></div>
     {% endif %}
 
     <h3>{{ movie.title }}</h3>
     <div class="year">{{ movie.year }}</div>
-    <div class="card-status">{{ movie.status }}</div>
-    
-    {% if results|length == 1 %}
-    <div class="quick-actions">
-      <p style="font-size:0.85rem;color:var(--muted);margin:0 0 12px 0;font-weight:600;">🔍 Search Elsewhere:</p>
-      <div>
-        <a href="https://www.google.com/search?q={{ movie.title }}+{{ movie.year }}+watch+online" target="_blank" class="quick-link">Google</a>
-        <a href="https://www.justwatch.com/in/search?q={{ movie.title }}" target="_blank" class="quick-link">JustWatch</a>
-      </div>
+
+    <div class="card-status">
+      {% if movie.providers %}
+        {% for p in movie.providers %}
+          <div class="provider-badge" 
+               data-name="{{ p.name }}" 
+               data-label="{{ p.label }}">
+            <span class="p-name">{{ p.name }}</span> 
+            <span class="p-label">({{ p.label }})</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <span class="static-status">{{ movie.status }}</span>
+        
+        {% if movie.ui_class == 'released-unknown' %}
+            <div style="margin-top:12px;">
+                <a href="{{ movie.justwatch_link }}" target="_blank" class="quick-link fallback-btn">
+                    ⚠️ Check JustWatch
+                </a>
+            </div>
+        {% endif %}
+      {% endif %}
     </div>
-    {% endif %}
 
   </div>
 {% endfor %}
 </section>
-
-<button class="scroll-top" id="scrollTopBtn" onclick="scrollToTop()">↑</button>
 
 <footer class="footer">
   <p>BoxdStream • Powered by TMDB</p>
@@ -92,40 +85,61 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // SCROLL TOP LOGIC
-  window.addEventListener('scroll', function() {
-    const btn = document.getElementById('scrollTopBtn');
-    if (window.pageYOffset > 300) {
-      btn.classList.add('visible');
-    } else {
-      btn.classList.remove('visible');
-    }
-  });
-
-  function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  // FILTER LOGIC
+  // === NEW FILTER LOGIC ===
   function filterMovies(filter, btn) {
-    // 1. Update active button style
+    // 1. Update Buttons
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    // 2. Filter cards
     const cards = document.querySelectorAll('.card');
     
     cards.forEach(card => {
+      const badges = card.querySelectorAll('.provider-badge');
+      const staticStatus = card.querySelector('.static-status');
+      
+      // CASE 1: "All" Selected
       if (filter === 'all') {
         card.classList.remove('hidden');
-      } else {
-        const statusText = card.querySelector('.card-status').textContent;
-        // Check if the status text contains the filter (case insensitive)
-        if (statusText.toLowerCase().includes(filter.toLowerCase())) {
-          card.classList.remove('hidden');
+        badges.forEach(b => b.style.display = 'block'); // Show everything
+        return;
+      }
+
+      // CASE 2: Specific Filter Selected
+      let hasMatch = false;
+
+      // Check dynamic badges (Streaming Services)
+      badges.forEach(badge => {
+        const name = badge.getAttribute('data-name').toLowerCase();
+        const label = badge.getAttribute('data-label').toLowerCase();
+        const filterLower = filter.toLowerCase();
+
+        // Match Logic:
+        // If filter is "Rent", look for "rent" or "buy" in the label
+        // If filter is "Netflix", look for "netflix" in the name
+        let isMatch = false;
+        
+        if (filter === 'Rent') {
+            if (label.includes('rent') || label.includes('buy')) isMatch = true;
         } else {
-          card.classList.add('hidden');
+            if (name.includes(filterLower)) isMatch = true;
         }
+
+        if (isMatch) {
+          badge.style.display = 'block'; // Show ONLY matching provider
+          hasMatch = true;
+        } else {
+          badge.style.display = 'none'; // Hide non-matching provider
+        }
+      });
+
+      // Handle Static Status (e.g., "Not Yet Released")
+      // Usually we hide these unless the filter matches "Released" logic, 
+      // but for simple provider filtering, we usually hide cards that don't match.
+      
+      if (hasMatch) {
+        card.classList.remove('hidden');
+      } else {
+        card.classList.add('hidden');
       }
     });
   }
