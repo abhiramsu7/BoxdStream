@@ -31,11 +31,24 @@
 <div class="filter-bar-container">
   <div class="filter-bar">
     <button class="filter-btn active" onclick="filterMovies('all', this)">All</button>
+    
     <button class="filter-btn" onclick="filterMovies('Netflix', this)">Netflix</button>
     <button class="filter-btn" onclick="filterMovies('Prime', this)">Prime Video</button>
-    <button class="filter-btn" onclick="filterMovies('JioHotstar', this)">JioHotstar</button>
-    <button class="filter-btn" onclick="filterMovies('Disney', this)">Disney+</button>
     <button class="filter-btn" onclick="filterMovies('Apple', this)">Apple TV</button>
+
+    {% if region == 'IN' %}
+        <button class="filter-btn" onclick="filterMovies('JioHotstar', this)">JioHotstar</button>
+        <button class="filter-btn" onclick="filterMovies('Zee5', this)">ZEE5</button>
+        <button class="filter-btn" onclick="filterMovies('Sony', this)">SonyLIV</button>
+        <button class="filter-btn" onclick="filterMovies('Aha', this)">Aha</button>
+    {% endif %}
+
+    {% if region != 'IN' %}
+        <button class="filter-btn" onclick="filterMovies('Disney', this)">Disney+</button>
+        <button class="filter-btn" onclick="filterMovies('Hulu', this)">Hulu</button>
+        <button class="filter-btn" onclick="filterMovies('Max', this)">HBO Max</button>
+    {% endif %}
+    
     <button class="filter-btn" onclick="filterMovies('Rent', this)">Rent/Buy</button>
   </div>
 </div>
@@ -95,7 +108,6 @@
     
     cards.forEach(card => {
       const badges = card.querySelectorAll('.provider-badge');
-      const staticStatus = card.querySelector('.static-status');
       
       // CASE 1: "All" Selected
       if (filter === 'all') {
@@ -113,9 +125,6 @@
         const label = badge.getAttribute('data-label').toLowerCase();
         const filterLower = filter.toLowerCase();
 
-        // Match Logic:
-        // If filter is "Rent", look for "rent" or "buy" in the label
-        // If filter is "Netflix", look for "netflix" in the name
         let isMatch = false;
         
         if (filter === 'Rent') {
@@ -131,10 +140,6 @@
           badge.style.display = 'none'; // Hide non-matching provider
         }
       });
-
-      // Handle Static Status (e.g., "Not Yet Released")
-      // Usually we hide these unless the filter matches "Released" logic, 
-      // but for simple provider filtering, we usually hide cards that don't match.
       
       if (hasMatch) {
         card.classList.remove('hidden');

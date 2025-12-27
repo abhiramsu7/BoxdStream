@@ -512,10 +512,55 @@ small{
   margin-bottom:8px;
 }
 
-.card-status{
-  color:var(--muted);
-  font-size:0.9rem;
-  line-height:1.4;
+/* === NEW: PROVIDER BADGE STYLES === */
+.card-status {
+    min-height: 40px;
+}
+
+.provider-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    display: block; 
+}
+
+.p-name {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.p-label {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-left: 4px;
+}
+
+/* BRAND COLORS */
+.provider-badge[data-name*="Netflix"] { border-left: 3px solid #E50914; }
+.provider-badge[data-name*="Prime"] { border-left: 3px solid #00A8E1; }
+.provider-badge[data-name*="Hotstar"] { border-left: 3px solid #060D2E; }
+.provider-badge[data-name*="Apple"] { border-left: 3px solid #A3AAAE; }
+
+/* INDIAN REGIONAL */
+.provider-badge[data-name*="Zee"] { border-left: 3px solid #8230C6; } 
+.provider-badge[data-name*="Sony"] { border-left: 3px solid #F48225; } 
+.provider-badge[data-name*="aha"] { border-left: 3px solid #FF6D00; } 
+.provider-badge[data-name*="Sun"] { border-left: 3px solid #ED1C24; }
+
+/* REST OF WORLD */
+.provider-badge[data-name*="Hulu"] { border-left: 3px solid #1CE783; } 
+.provider-badge[data-name*="Max"] { border-left: 3px solid #4844E3; }
+
+.fallback-btn {
+    background: rgba(245, 158, 11, 0.1) !important; 
+    border-color: rgba(245, 158, 11, 0.3) !important; 
+    color: #f59e0b !important; 
+    width: 100%; 
+    text-align: center; 
+    display: block;
 }
 
 .quick-actions{

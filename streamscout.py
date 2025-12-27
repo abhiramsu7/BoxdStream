@@ -284,7 +284,8 @@ def index():
         return render_template("results.html",
                                results=results_dicts,
                                summary=summary,
-                               mode=mode)
+                               mode=mode,
+                               region=region)
 
     return render_template("index.html")
 
