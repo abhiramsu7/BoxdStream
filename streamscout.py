@@ -21,7 +21,7 @@ class Movie:
         self.poster_path = None
         self.is_released = False
         self.release_date = None
-        self.streaming_info = {}
+        self.streaming_info = {} # Stores { 'ProviderName': {'label': 'Rent', 'logo': 'url...'} }
         self.media_type = media_type
 
     def __str__(self):
@@ -29,7 +29,8 @@ class Movie:
             return "Not Yet Released"
         if not self.streaming_info:
             return "Released – Availability Unknown / Not Streaming in Region"
-        providers = [f"{k} ({v})" for k, v in self.streaming_info.items()]
+        # Adjusted to handle the new Dictionary structure for providers
+        providers = [f"{k} ({v['label']})" for k, v in self.streaming_info.items()]
         return f"Available on: {', '.join(providers)}"
 
     def get_category(self):
@@ -45,25 +46,28 @@ class Movie:
             return "unknown"
 
     def to_dict(self):
-        # Create a clean list of providers for the frontend
-        # Example: [{'name': 'Netflix', 'text': 'Subscription'}, {'name': 'Prime', 'text': 'Rent'}]
+        # Create a clean list of providers with LOGOS for the frontend
         providers_list = []
         status_parts = []
         
         if self.streaming_info:
-            for name, label in self.streaming_info.items():
-                providers_list.append({"name": name, "label": label})
-                status_parts.append(f"{name} ({label})")
+            for name, data in self.streaming_info.items():
+                providers_list.append({
+                    "name": name, 
+                    "label": data["label"],
+                    "logo": data["logo"]
+                })
+                status_parts.append(name)
             status_text = f"Available on: {', '.join(status_parts)}"
         else:
             status_text = "Released – Availability Unknown" if self.is_released else "Not Yet Released"
 
         # UI Class logic
-        if "Subscription" in status_text:
+        if "Subscription" in str(self):
             ui_class = "available"
-        elif "Rent" in status_text:
+        elif "Rent" in str(self):
             ui_class = "rent"
-        elif "Not Yet Released" in status_text:
+        elif "Not Yet Released" in str(self):
             ui_class = "not-released"
         else:
             ui_class = "released-unknown"
@@ -75,8 +79,8 @@ class Movie:
         return {
             "title": title_display,
             "year": self.year,
-            "status": status_text,         # Keep for backup
-            "providers": providers_list,   # NEW: Structured Data
+            "status": status_text,         # Backup text
+            "providers": providers_list,   # NEW: List with Logos
             "ui_class": ui_class,
             "poster": (
                 f"https://image.tmdb.org/t/p/w342{self.poster_path}"
@@ -117,7 +121,6 @@ class TMDBClient:
         
         # === OPTIMIZATION: DIRECT ID LOOKUP ===
         if movie.tmdb_id:
-            # We already know exactly what to look for. No searching needed.
             return self._fetch_details_by_id(movie)
 
         # === FALLBACK: TEXT SEARCH (For CSVs) ===
@@ -187,14 +190,16 @@ class TMDBClient:
             return
 
         r = data["results"][region]
-        for key, label in [("flatrate","Subscription (Free)"),
-                           ("buy","Rent/Buy (Extra Cost)"),
-                           ("rent","Rent (Extra Cost)")]:
+        for key, label in [("flatrate","Subscription"), # Shortened label
+                           ("buy","Buy"),
+                           ("rent","Rent")]:
             for p in r.get(key, []):
                 
                 provider_name = p["provider_name"]
+                logo_path = p.get("logo_path", "")
                 p_lower = provider_name.lower()
 
+                # === JIOHOTSTAR & LOCALIZATION LOGIC ===
                 if region == "IN":
                     if "hotstar" in p_lower or "jio" in p_lower or "disney" in p_lower:
                         provider_name = "JioHotstar"
@@ -202,7 +207,11 @@ class TMDBClient:
                     if "hotstar" in p_lower:
                         provider_name = "Disney+"
 
-                movie.streaming_info.setdefault(provider_name, label)
+                # Store both Label AND Logo URL
+                movie.streaming_info[provider_name] = {
+                    "label": label,
+                    "logo": f"https://image.tmdb.org/t/p/original{logo_path}" if logo_path else ""
+                }
 
 # =========================
 # WATCHLIST
@@ -221,7 +230,7 @@ class Watchlist:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
             for m in self.movies:
                 ex.submit(self._process_one, m, client, region)
-        return self.movies  # Return objects, not dicts, so we can count categories
+        return self.movies  # Return objects, not dicts
 
     def _process_one(self, movie, client, region):
         if client.search_movie(movie):
@@ -246,14 +255,12 @@ def index():
 
         if mode == "search":
             title = request.form.get("title", "").strip()
-            # We assume these are populated by the JS Autocomplete
             tmdb_id = request.form.get("tmdb_id")
             media_type = request.form.get("media_type", "movie")
             
             if not title:
                 return render_template("index.html")
             
-            # Pass ID directly if we have it
             movie = Movie(title, "0000", tmdb_id=tmdb_id, media_type=media_type)
             wl = Watchlist()
             wl.movies = [movie]
@@ -268,7 +275,7 @@ def index():
             wl.load_csv(io.BytesIO(file.read()))
             results_objects = wl.process(client, region)
 
-        # === FIXED SUMMARY COUNTER (Priority Based) ===
+        # === FIXED SUMMARY COUNTER ===
         categories = [m.get_category() for m in results_objects]
         summary = {
             "available_free": categories.count("available_free"),
@@ -278,14 +285,13 @@ def index():
             "tv_series": sum(1 for m in results_objects if m.media_type == "tv")
         }
         
-        # Convert to dicts for rendering
         results_dicts = [m.to_dict() for m in results_objects]
 
         return render_template("results.html",
                                results=results_dicts,
                                summary=summary,
                                mode=mode,
-                               region=region)
+                               region=region) # Passing region for smart filtering
 
     return render_template("index.html")
 

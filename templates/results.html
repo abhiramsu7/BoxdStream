@@ -15,6 +15,10 @@
   </a>
   <div class="nav-right">
     <div class="nav-toolbar">
+      <button class="icon-btn" onclick="window.history.back()" title="Go Back">←</button>
+      <button class="icon-btn" onclick="window.history.forward()" title="Go Forward">→</button>
+      <div class="separator"></div>
+      
       <a href="/" class="icon-btn" title="Home">🏠</a>
       <div class="separator"></div>
       <button class="theme-btn" onclick="toggleTheme()">🌙</button>
@@ -67,14 +71,25 @@
 
     <div class="card-status">
       {% if movie.providers %}
+        <div class="provider-grid">
         {% for p in movie.providers %}
-          <div class="provider-badge" 
+          <div class="provider-icon" 
+               title="{{ p.name }} ({{ p.label }})"
                data-name="{{ p.name }}" 
                data-label="{{ p.label }}">
-            <span class="p-name">{{ p.name }}</span> 
-            <span class="p-label">({{ p.label }})</span>
+            
+            {% if p.logo %}
+                <img src="{{ p.logo }}" alt="{{ p.name }}">
+            {% else %}
+                <span style="font-size:0.6rem; display:flex; align-items:center; justify-content:center; height:100%; color:white;">{{ p.name[:3] }}</span>
+            {% endif %}
+
+            {% if p.label != 'Subscription' %}
+                <span class="mini-tag">{{ p.label }}</span>
+            {% endif %}
           </div>
         {% endfor %}
+        </div>
       {% else %}
         <span class="static-status">{{ movie.status }}</span>
         
@@ -98,28 +113,25 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === NEW FILTER LOGIC ===
+  // === NEW VISUAL FILTER LOGIC ===
   function filterMovies(filter, btn) {
-    // 1. Update Buttons
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
     const cards = document.querySelectorAll('.card');
     
     cards.forEach(card => {
-      const badges = card.querySelectorAll('.provider-badge');
+      // Note: We now look for .provider-icon, not .provider-badge
+      const badges = card.querySelectorAll('.provider-icon');
       
-      // CASE 1: "All" Selected
       if (filter === 'all') {
         card.classList.remove('hidden');
-        badges.forEach(b => b.style.display = 'block'); // Show everything
+        badges.forEach(b => b.style.display = 'block'); 
         return;
       }
 
-      // CASE 2: Specific Filter Selected
       let hasMatch = false;
 
-      // Check dynamic badges (Streaming Services)
       badges.forEach(badge => {
         const name = badge.getAttribute('data-name').toLowerCase();
         const label = badge.getAttribute('data-label').toLowerCase();
@@ -134,10 +146,10 @@
         }
 
         if (isMatch) {
-          badge.style.display = 'block'; // Show ONLY matching provider
+          badge.style.display = 'block';
           hasMatch = true;
         } else {
-          badge.style.display = 'none'; // Hide non-matching provider
+          badge.style.display = 'none'; 
         }
       });
       
