@@ -368,37 +368,51 @@ body{
   box-shadow:0 0 0 3px rgba(124,124,255,0.1);
 }
 
+/* === BUTTON FIX (TEXT VISIBILITY) === */
 .hero-form button{
-  background:linear-gradient(135deg, var(--accent), #8b5cf6);
-  color:white;
-  border:none;
-  padding:14px 28px;
-  border-radius:12px;
-  cursor:pointer;
-  font-weight:700;
-  font-size:1rem;
-  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:0 4px 14px rgba(124,124,255,0.4);
-  position:relative;
-  overflow:hidden;
+  background: transparent; /* Changed from gradient to transparent */
+  color: white;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(124,124,255,0.4);
+  position: relative;
+  z-index: 1; /* Ensures button content stays on top */
 }
 
+/* 1. Default Background (Layer -2) */
 .hero-form button::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg, var(--accent), #8b5cf6);
+  z-index: -2;
+  border-radius: 12px;
+}
+
+/* 2. Hover Background (Layer -1) */
+.hero-form button::after{
   content:'';
   position:absolute;
   inset:0;
   background:linear-gradient(135deg, #8b5cf6, var(--accent));
   opacity:0;
   transition:opacity 0.3s;
-}
-
-.hero-form button:hover::before{
-  opacity:1;
+  z-index: -1;
+  border-radius: 12px;
 }
 
 .hero-form button:hover{
   transform:translateY(-2px);
   box-shadow:0 6px 20px rgba(124,124,255,0.5);
+}
+
+.hero-form button:hover::after{
+  opacity:1;
 }
 
 small{
@@ -576,7 +590,22 @@ small{
     backdrop-filter: blur(2px);
 }
 
-/* FALLBACK BUTTON */
+/* BRAND COLORS */
+.provider-badge[data-name*="Netflix"] { border-left: 3px solid #E50914; }
+.provider-badge[data-name*="Prime"] { border-left: 3px solid #00A8E1; }
+.provider-badge[data-name*="Hotstar"] { border-left: 3px solid #060D2E; }
+.provider-badge[data-name*="Apple"] { border-left: 3px solid #A3AAAE; }
+
+/* INDIAN REGIONAL */
+.provider-badge[data-name*="Zee"] { border-left: 3px solid #8230C6; } 
+.provider-badge[data-name*="Sony"] { border-left: 3px solid #F48225; } 
+.provider-badge[data-name*="aha"] { border-left: 3px solid #FF6D00; } 
+.provider-badge[data-name*="Sun"] { border-left: 3px solid #ED1C24; }
+
+/* REST OF WORLD */
+.provider-badge[data-name*="Hulu"] { border-left: 3px solid #1CE783; } 
+.provider-badge[data-name*="Max"] { border-left: 3px solid #4844E3; }
+
 .fallback-btn {
     background: rgba(245, 158, 11, 0.1) !important; 
     border-color: rgba(245, 158, 11, 0.3) !important; 

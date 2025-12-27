@@ -15,13 +15,11 @@
   </a>
   <div class="nav-right">
     <div class="nav-toolbar">
-      <button class="icon-btn" onclick="window.history.back()" title="Go Back">←</button>
-      <button class="icon-btn" onclick="window.history.forward()" title="Go Forward">→</button>
+      <a href="/" class="icon-btn" title="New Search / Back">←</a>
+      
       <div class="separator"></div>
       
-      <a href="/" class="icon-btn" title="Home">🏠</a>
-      <div class="separator"></div>
-      <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+      <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
     </div>
   </div>
 </header>
@@ -113,7 +111,6 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === NEW VISUAL FILTER LOGIC ===
   function filterMovies(filter, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -121,7 +118,6 @@
     const cards = document.querySelectorAll('.card');
     
     cards.forEach(card => {
-      // Note: We now look for .provider-icon, not .provider-badge
       const badges = card.querySelectorAll('.provider-icon');
       
       if (filter === 'all') {
