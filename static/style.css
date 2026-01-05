@@ -590,22 +590,7 @@ small{
     backdrop-filter: blur(2px);
 }
 
-/* BRAND COLORS */
-.provider-badge[data-name*="Netflix"] { border-left: 3px solid #E50914; }
-.provider-badge[data-name*="Prime"] { border-left: 3px solid #00A8E1; }
-.provider-badge[data-name*="Hotstar"] { border-left: 3px solid #060D2E; }
-.provider-badge[data-name*="Apple"] { border-left: 3px solid #A3AAAE; }
-
-/* INDIAN REGIONAL */
-.provider-badge[data-name*="Zee"] { border-left: 3px solid #8230C6; } 
-.provider-badge[data-name*="Sony"] { border-left: 3px solid #F48225; } 
-.provider-badge[data-name*="aha"] { border-left: 3px solid #FF6D00; } 
-.provider-badge[data-name*="Sun"] { border-left: 3px solid #ED1C24; }
-
-/* REST OF WORLD */
-.provider-badge[data-name*="Hulu"] { border-left: 3px solid #1CE783; } 
-.provider-badge[data-name*="Max"] { border-left: 3px solid #4844E3; }
-
+/* FALLBACK BUTTON */
 .fallback-btn {
     background: rgba(245, 158, 11, 0.1) !important; 
     border-color: rgba(245, 158, 11, 0.3) !important; 

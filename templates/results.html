@@ -111,6 +111,7 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
+  // === VISUAL FILTER LOGIC ===
   function filterMovies(filter, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -118,6 +119,7 @@
     const cards = document.querySelectorAll('.card');
     
     cards.forEach(card => {
+      // Look for .provider-icon, not .provider-badge
       const badges = card.querySelectorAll('.provider-icon');
       
       if (filter === 'all') {
