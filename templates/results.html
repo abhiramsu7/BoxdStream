@@ -120,9 +120,7 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === VISUAL FILTER LOGIC WITH WITTY EMPTY STATE ===
   function filterMovies(filter, btn) {
-    // 1. Update Active Button
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
 
@@ -137,7 +135,6 @@
     cards.forEach(card => {
       const badges = card.querySelectorAll('.provider-icon');
       
-      // CASE: ALL
       if (filter === 'all') {
         card.classList.remove('hidden');
         badges.forEach(b => b.style.display = 'block'); 
@@ -145,7 +142,6 @@
         return;
       }
 
-      // CASE: SPECIFIC FILTER
       let hasMatch = false;
       badges.forEach(badge => {
         const name = badge.getAttribute('data-name').toLowerCase();
@@ -175,12 +171,10 @@
       }
     });
 
-    // === EMPTY STATE LOGIC ===
     if (visibleCount === 0) {
         emptyState.classList.remove('hidden');
         emptyFilterName.textContent = filter;
 
-        // THE WITTY PART: Dynamic Text & Icons
         if (filter === 'Aha') {
             emptyTitle.textContent = "Aha! ...Wait, false alarm.";
             emptyIcon.textContent = "😅";
