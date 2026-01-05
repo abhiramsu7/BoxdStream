@@ -279,19 +279,23 @@ body{
   width:100%;
 }
 
-/* Autocomplete Dropdown */
+/* === AUTOCOMPLETE DROPDOWN (FIXED) === */
 .autocomplete-dropdown{
   position:absolute;
   top:calc(100% + 4px);
   left:0;
   right:0;
   background:var(--surface);
-  border:1px solid rgba(124,124,255,0.3);
   border-radius:12px;
   max-height:300px;
   overflow-y:auto;
   z-index:1000;
-  box-shadow:0 8px 24px rgba(0,0,0,0.3);
+}
+
+/* Only show border & shadow when there are results */
+.autocomplete-dropdown:not(:empty) {
+    border:1px solid rgba(124,124,255,0.3);
+    box-shadow:0 8px 24px rgba(0,0,0,0.3);
 }
 
 .autocomplete-item{
@@ -381,7 +385,7 @@ body{
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 14px rgba(124,124,255,0.4);
   position: relative;
-  z-index: 1; /* TEXT ON TOP */
+  z-index: 1;
 }
 
 .hero-form button::before{
