@@ -105,36 +105,52 @@
 {% endfor %}
 </section>
 
+<div id="empty-state" class="empty-state hidden">
+    <div class="empty-icon">👻</div>
+    <h3 id="empty-title">It's a ghost town here.</h3>
+    <p>None of your watchlist movies are currently streaming on <span id="empty-filter-name" class="highlight-text">this platform</span>.</p>
+    <button onclick="filterMovies('all', document.querySelector('.filter-btn'))" class="reset-btn">
+        View All Movies
+    </button>
+</div>
+
 <footer class="footer">
   <p>BoxdStream • Powered by TMDB</p>
 </footer>
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === VISUAL FILTER LOGIC ===
+  // === VISUAL FILTER LOGIC WITH WITTY EMPTY STATE ===
   function filterMovies(filter, btn) {
+    // 1. Update Active Button
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    if (btn) btn.classList.add('active');
 
     const cards = document.querySelectorAll('.card');
+    const emptyState = document.getElementById('empty-state');
+    const emptyTitle = document.getElementById('empty-title');
+    const emptyFilterName = document.getElementById('empty-filter-name');
+    const emptyIcon = document.querySelector('.empty-icon');
+    
+    let visibleCount = 0;
     
     cards.forEach(card => {
-      // Look for .provider-icon, not .provider-badge
       const badges = card.querySelectorAll('.provider-icon');
       
+      // CASE: ALL
       if (filter === 'all') {
         card.classList.remove('hidden');
         badges.forEach(b => b.style.display = 'block'); 
+        visibleCount++;
         return;
       }
 
+      // CASE: SPECIFIC FILTER
       let hasMatch = false;
-
       badges.forEach(badge => {
         const name = badge.getAttribute('data-name').toLowerCase();
         const label = badge.getAttribute('data-label').toLowerCase();
         const filterLower = filter.toLowerCase();
-
         let isMatch = false;
         
         if (filter === 'Rent') {
@@ -153,10 +169,41 @@
       
       if (hasMatch) {
         card.classList.remove('hidden');
+        visibleCount++;
       } else {
         card.classList.add('hidden');
       }
     });
+
+    // === EMPTY STATE LOGIC ===
+    if (visibleCount === 0) {
+        emptyState.classList.remove('hidden');
+        emptyFilterName.textContent = filter;
+
+        // THE WITTY PART: Dynamic Text & Icons
+        if (filter === 'Aha') {
+            emptyTitle.textContent = "Aha! ...Wait, false alarm.";
+            emptyIcon.textContent = "😅";
+        } else if (filter === 'Netflix') {
+            emptyTitle.textContent = "Tudum... Silence.";
+            emptyIcon.textContent = "🍿";
+        } else if (filter === 'Prime') {
+            emptyTitle.textContent = "Empty box delivered.";
+            emptyIcon.textContent = "📦";
+        } else if (filter === 'JioHotstar') {
+            emptyTitle.textContent = "No drama (or cricket) here.";
+            emptyIcon.textContent = "🏏";
+        } else if (filter === 'Apple') {
+            emptyTitle.textContent = "Think Different... try another app.";
+            emptyIcon.textContent = "🍎";
+        } else {
+            emptyTitle.textContent = "It's a ghost town here.";
+            emptyIcon.textContent = "👻";
+        }
+
+    } else {
+        emptyState.classList.add('hidden');
+    }
   }
 </script>
 
