@@ -11,7 +11,7 @@
 
 <div id="loader" class="loader hidden">
   <div class="spinner"></div>
-  <div class="loading-text">Finding a movie before your dinner gets cold...</div>
+  <div class="loading-text">Connecting to the streaming multiverse...</div>
 </div>
 
 <header class="nav">
@@ -32,11 +32,6 @@
       Check where your favorite movies and shows are streaming across 50+ platforms instantly.
     </p>
 
-    <div class="mode-toggle">
-      <button class="mode-btn active" id="search-btn" onclick="switchMode('search')">Search Title</button>
-      <button class="mode-btn" id="csv-btn" onclick="switchMode('csv')">Upload Watchlist</button>
-    </div>
-
     <form class="hero-form" id="search-form" action="/" method="POST">
       <input type="hidden" name="mode" value="search">
       
@@ -48,7 +43,7 @@
       <input type="hidden" name="tmdb_id" id="tmdb_id">
       <input type="hidden" name="media_type" id="media_type">
 
-      <select name="region_code">
+      <select name="region_code" id="region-select">
         <option value="IN" selected>India (IN)</option>
         <option value="US">United States (US)</option>
         <option value="GB">United Kingdom (GB)</option>
@@ -60,20 +55,6 @@
       </select>
 
       <button type="submit">Search</button>
-    </form>
-
-    <form class="hero-form hidden" id="csv-form" action="/" method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="mode" value="csv">
-      
-      <input type="file" name="file" accept=".csv" required>
-      
-      <select name="region_code">
-        <option value="IN" selected>India (IN)</option>
-        <option value="US">United States (US)</option>
-        <option value="GB">United Kingdom (GB)</option>
-      </select>
-
-      <button type="submit">Upload & Check</button>
     </form>
 
     <small class="availability-note">
@@ -88,37 +69,89 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === CINEPHILE LOADING TEXT ===
-  const loadingMessages = [
-    "Finding a movie before your dinner gets cold...",
-    "Scanning the multiverse for streaming rights...",
-    "Still faster than 20 minutes of doom-scrolling...",
-    "Popcorn is popping... buttering the data...",
-    "Asking the projectionist to wake up...",
-    "Consulting the Oracle for availability...",
-    "Rerouting the flux capacitor...",
-    "Assembling the Avengers of streaming apps...",
-    "Loading... (No spoilers included)"
-  ];
+  // === 1. DEFINE THE MESSAGES ===
+  const messages = {
+    morning: [ // 5 AM - 12 PM
+        "Brewing your morning coffee...",
+        "Finding a movie to go with breakfast...",
+        "Starting the day with some cinema...",
+        "Waking up the streaming servers...",
+        "Too early for drama? Checking anyway...",
+        "Loading... (Don't forget your coffee)"
+    ],
+    evening: [ // 12 PM - 8 PM (Afternoon/Evening)
+        "Skipping work to watch movies? Nice.",
+        "Finding the perfect lunch break watch...",
+        "Procrastinating like a pro...",
+        "Beat the evening rush...",
+        "Scanning 50+ platforms...",
+        "Almost there... hold tight..."
+    ],
+    night: [ // 8 PM - 5 AM
+        "Sleep is for the weak. Movies are forever.",
+        "Popcorn is popping... buttering the data...",
+        "Finding a movie before your dinner gets cold...",
+        "Revenge bedtime procrastination loading...",
+        "Checking if it's too scary for 2 AM...",
+        "Turning off the lights... loading the show..."
+    ]
+  };
+
+  // === 2. DEFINE REGION TIMEZONES ===
+  const regionTimezones = {
+    'IN': 'Asia/Kolkata',
+    'US': 'America/New_York', // East Coast default
+    'GB': 'Europe/London',
+    'CA': 'America/Toronto',  // Eastern Time default
+    'AU': 'Australia/Sydney',
+    'BR': 'America/Sao_Paulo',
+    'FR': 'Europe/Paris',
+    'DE': 'Europe/Berlin'
+  };
 
   function startLoadingText() {
     const textElement = document.querySelector('.loading-text');
     if (!textElement) return;
 
+    // A. Get Selected Region
+    const regionSelect = document.getElementById('region-select');
+    const selectedRegion = regionSelect.value;
+    const timeZone = regionTimezones[selectedRegion] || 'UTC';
+
+    // B. Get Hour in THAT Region
+    const date = new Date();
+    // Use Intl API to extract the hour in the specific timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        hour12: false,
+        timeZone: timeZone
+    });
+    const hour = parseInt(formatter.format(date));
+
+    // C. Pick the Vibe
+    let selectedMessages;
+    if (hour >= 5 && hour < 12) {
+        selectedMessages = messages.morning;
+    } else if (hour >= 12 && hour < 20) {
+        selectedMessages = messages.evening;
+    } else {
+        selectedMessages = messages.night;
+    }
+
+    // D. Start Rotation
     let i = 0;
-    // Set first message immediately
-    textElement.textContent = loadingMessages[0];
+    textElement.textContent = selectedMessages[0];
     
     setInterval(() => {
-        i = (i + 1) % loadingMessages.length;
+        i = (i + 1) % selectedMessages.length;
         textElement.style.opacity = 0; // Fade out
         
         setTimeout(() => {
-            textElement.textContent = loadingMessages[i];
+            textElement.textContent = selectedMessages[i];
             textElement.style.opacity = 1; // Fade in
         }, 300);
         
-    }, 2000); // Change every 2 seconds
+    }, 2000); 
   }
 
   // Trigger on Form Submit
@@ -129,7 +162,7 @@
     });
   });
 
-  // === AUTOCOMPLETE LOGIC ===
+  // === AUTOCOMPLETE LOGIC (No Changes Needed Here) ===
   const searchInput = document.getElementById('movie-search');
   const autocompleteList = document.getElementById('autocomplete-list');
   let debounceTimer;
@@ -172,7 +205,6 @@
     }, 300);
   });
 
-  // Close dropdown when clicking outside
   document.addEventListener('click', function(e) {
     if (e.target !== searchInput) {
       autocompleteList.innerHTML = '';
