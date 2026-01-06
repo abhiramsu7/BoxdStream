@@ -48,7 +48,7 @@
       <input type="hidden" name="tmdb_id" id="tmdb_id">
       <input type="hidden" name="media_type" id="media_type">
 
-      <select name="region_code" id="region-select">
+      <select name="region_code" id="region-select-search">
         <option value="IN" selected>India (IN)</option>
         <option value="US">United States (US)</option>
         <option value="GB">United Kingdom (GB)</option>
@@ -67,7 +67,7 @@
       
       <input type="file" name="file" accept=".csv" required>
       
-      <select name="region_code">
+      <select name="region_code" id="region-select-csv">
         <option value="IN" selected>India (IN)</option>
         <option value="US">United States (US)</option>
         <option value="GB">United Kingdom (GB)</option>
@@ -93,59 +93,102 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === 1. DEFINE MESSAGES ===
+  // === 1. MESSAGES ===
   const messages = {
     morning: [
-        "Brewing your morning coffee...", "Finding a movie to go with breakfast...", "Starting the day with some cinema...",
-        "Waking up the streaming servers...", "Too early for drama? Checking anyway...", "Loading... (Don't forget your coffee)"
+        "Brewing your morning coffee...",
+        "Finding a movie to go with breakfast...",
+        "Starting the day with some cinema...",
+        "Waking up the streaming servers...",
+        "Too early for drama? Checking anyway...",
+        "Loading... (Don't forget your coffee)"
     ],
     evening: [
-        "Skipping work to watch movies? Nice.", "Finding the perfect lunch break watch...", "Procrastinating like a pro...",
-        "Beat the evening rush...", "Scanning 50+ platforms...", "Almost there... hold tight..."
+        "Skipping work to watch movies? Nice.",
+        "Finding the perfect lunch break watch...",
+        "Procrastinating like a pro...",
+        "Beat the evening rush...",
+        "Scanning 50+ platforms...",
+        "Almost there... hold tight..."
     ],
     night: [
-        "Sleep is for the weak. Movies are forever.", "Popcorn is popping... buttering the data...", "Finding a movie before your dinner gets cold...",
-        "Revenge bedtime procrastination loading...", "Checking if it's too scary for 2 AM...", "Turning off the lights... loading the show..."
+        "Sleep is for the weak. Movies are forever.",
+        "Popcorn is popping... buttering the data...",
+        "Finding a movie before your dinner gets cold...",
+        "Revenge bedtime procrastination loading...",
+        "Checking if it's too scary for 2 AM...",
+        "Turning off the lights... loading the show..."
     ]
   };
 
   // === 2. TIMEZONE LOGIC ===
   const regionTimezones = {
-    'IN': 'Asia/Kolkata', 'US': 'America/New_York', 'GB': 'Europe/London', 'CA': 'America/Toronto',
-    'AU': 'Australia/Sydney', 'BR': 'America/Sao_Paulo', 'FR': 'Europe/Paris', 'DE': 'Europe/Berlin'
+    'IN': 'Asia/Kolkata',
+    'US': 'America/New_York',
+    'GB': 'Europe/London',
+    'CA': 'America/Toronto',
+    'AU': 'Australia/Sydney',
+    'BR': 'America/Sao_Paulo',
+    'FR': 'Europe/Paris',
+    'DE': 'Europe/Berlin'
   };
 
   function startLoadingText() {
     const textElement = document.querySelector('.loading-text');
     if (!textElement) return;
 
-    const regionSelect = document.getElementById('region-select') || document.querySelector('#csv-form select[name="region_code"]');
+    // FIX: Find the dropdown inside the CURRENTLY VISIBLE form
+    // This ensures we check the form the user actually clicked "Search" on
+    const activeForm = document.querySelector('form:not(.hidden)');
+    const regionSelect = activeForm ? activeForm.querySelector('select[name="region_code"]') : null;
+    
+    // Default to 'IN' if something goes wrong
     const selectedRegion = regionSelect ? regionSelect.value : 'IN';
     const timeZone = regionTimezones[selectedRegion] || 'UTC';
 
+    // Get current hour in THAT specific timezone
     const date = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timeZone });
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        hour12: false,
+        timeZone: timeZone
+    });
+    
     const hour = parseInt(formatter.format(date));
 
-    let selectedMessages;
-    if (hour >= 5 && hour < 12) selectedMessages = messages.morning;
-    else if (hour >= 12 && hour < 20) selectedMessages = messages.evening;
-    else selectedMessages = messages.night;
+    // Debugging logs (Check console F12 to verify)
+    console.log(`Region: ${selectedRegion}, Timezone: ${timeZone}, Hour Detected: ${hour}`);
 
+    // Pick the Vibe
+    let selectedMessages;
+    if (hour >= 5 && hour < 12) {
+        selectedMessages = messages.morning; // 5 AM - 11:59 AM
+    } else if (hour >= 12 && hour < 20) {
+        selectedMessages = messages.evening; // 12 PM - 7:59 PM
+    } else {
+        selectedMessages = messages.night;   // 8 PM - 4:59 AM
+    }
+
+    // Start Rotation
     let i = 0;
     textElement.textContent = selectedMessages[0];
     
-    setInterval(() => {
+    // Clear any existing interval
+    if (window.loadingInterval) clearInterval(window.loadingInterval);
+
+    window.loadingInterval = setInterval(() => {
         i = (i + 1) % selectedMessages.length;
-        textElement.style.opacity = 0;
+        textElement.style.opacity = 0; 
+        
         setTimeout(() => {
             textElement.textContent = selectedMessages[i];
-            textElement.style.opacity = 1;
+            textElement.style.opacity = 1; 
         }, 300);
+        
     }, 2000); 
   }
 
-  // Trigger on BOTH forms
+  // Trigger on Form Submit
   document.querySelectorAll('form').forEach(form => {
     form.addEventListener('submit', function() {
       document.getElementById('loader').classList.remove('hidden');
