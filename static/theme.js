@@ -5,6 +5,7 @@ function setTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
     const btn = document.querySelector('.theme-btn');
+    // Change icon based on theme
     if (btn) btn.innerHTML = (theme === 'dark') ? '🌙' : '☀️';
 }
 
@@ -13,32 +14,31 @@ function toggleTheme() {
     setTheme(current === 'dark' ? 'light' : 'dark');
 }
 
-// === MODE SWITCHER (Home Page) ===
-// This function has been simplified as mode toggle buttons are removed for mobile.
+// === MODE SWITCHER (Search vs CSV) ===
 function switchMode(mode) {
-    // Get elements for the search and csv modes
+    // Get the DOM elements
     const searchForm = document.getElementById('search-form');
     const csvForm = document.getElementById('csv-form');
     const searchBtn = document.getElementById('search-btn');
     const csvBtn = document.getElementById('csv-btn');
 
-    // Safety check: if any of these are null, we are likely on results page, so exit.
+    // Safety check: if elements don't exist (e.g., on results page), stop.
     if (!searchForm || !csvForm || !searchBtn || !csvBtn) return;
 
-    // Hide both forms and remove active class from both buttons
+    // Reset: Hide both forms and remove active class from buttons
     searchForm.classList.add('hidden');
     csvForm.classList.add('hidden');
     searchBtn.classList.remove('active');
     csvBtn.classList.remove('active');
 
-    // Show the selected form and add active class to its button
+    // Activate the selected mode
     if (mode === 'search') {
         searchForm.classList.remove('hidden');
-        searchForm.style.display = 'flex';
+        searchForm.style.display = 'flex'; // Ensure flex layout is restored
         searchBtn.classList.add('active');
     } else {
         csvForm.classList.remove('hidden');
-        csvForm.style.display = 'flex';
+        csvForm.style.display = 'flex'; // Ensure flex layout is restored
         csvBtn.classList.add('active');
     }
 }
@@ -59,13 +59,13 @@ function topFunction() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// === INITIALIZATION (Load settings) ===
+// === INITIALIZATION ===
 document.addEventListener('DOMContentLoaded', () => {
-    // Set theme from storage or default
+    // 1. Load saved theme or default to dark
     const savedTheme = localStorage.getItem('theme') || 'dark';
     setTheme(savedTheme);
     
-    // Default to search mode on load if we are on the home page
+    // 2. Default to 'Search' mode if we are on the home page
     if (document.getElementById('search-btn')) {
         switchMode('search');
     }

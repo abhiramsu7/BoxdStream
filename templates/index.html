@@ -32,6 +32,11 @@
       Check where your favorite movies and shows are streaming across 50+ platforms instantly.
     </p>
 
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="search-btn" onclick="switchMode('search')">Search Title</button>
+      <button class="mode-btn" id="csv-btn" onclick="switchMode('csv')">Upload Watchlist</button>
+    </div>
+
     <form class="hero-form" id="search-form" action="/" method="POST">
       <input type="hidden" name="mode" value="search">
       
@@ -57,6 +62,25 @@
       <button type="submit">Search</button>
     </form>
 
+    <form class="hero-form hidden" id="csv-form" action="/" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="mode" value="csv">
+      
+      <input type="file" name="file" accept=".csv" required>
+      
+      <select name="region_code">
+        <option value="IN" selected>India (IN)</option>
+        <option value="US">United States (US)</option>
+        <option value="GB">United Kingdom (GB)</option>
+        <option value="CA">Canada (CA)</option>
+        <option value="AU">Australia (AU)</option>
+        <option value="BR">Brazil (BR)</option>
+        <option value="FR">France (FR)</option>
+        <option value="DE">Germany (DE)</option>
+      </select>
+
+      <button type="submit">Upload & Check</button>
+    </form>
+
     <small class="availability-note">
       💡 <strong>Tip:</strong> Export your watchlist from Letterboxd (Settings > Import & Export) or search for individual titles to get started.
     </small>
@@ -69,92 +93,59 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === 1. DEFINE THE MESSAGES ===
+  // === 1. DEFINE MESSAGES ===
   const messages = {
-    morning: [ // 5 AM - 12 PM
-        "Brewing your morning coffee...",
-        "Finding a movie to go with breakfast...",
-        "Starting the day with some cinema...",
-        "Waking up the streaming servers...",
-        "Too early for drama? Checking anyway...",
-        "Loading... (Don't forget your coffee)"
+    morning: [
+        "Brewing your morning coffee...", "Finding a movie to go with breakfast...", "Starting the day with some cinema...",
+        "Waking up the streaming servers...", "Too early for drama? Checking anyway...", "Loading... (Don't forget your coffee)"
     ],
-    evening: [ // 12 PM - 8 PM (Afternoon/Evening)
-        "Skipping work to watch movies? Nice.",
-        "Finding the perfect lunch break watch...",
-        "Procrastinating like a pro...",
-        "Beat the evening rush...",
-        "Scanning 50+ platforms...",
-        "Almost there... hold tight..."
+    evening: [
+        "Skipping work to watch movies? Nice.", "Finding the perfect lunch break watch...", "Procrastinating like a pro...",
+        "Beat the evening rush...", "Scanning 50+ platforms...", "Almost there... hold tight..."
     ],
-    night: [ // 8 PM - 5 AM
-        "Sleep is for the weak. Movies are forever.",
-        "Popcorn is popping... buttering the data...",
-        "Finding a movie before your dinner gets cold...",
-        "Revenge bedtime procrastination loading...",
-        "Checking if it's too scary for 2 AM...",
-        "Turning off the lights... loading the show..."
+    night: [
+        "Sleep is for the weak. Movies are forever.", "Popcorn is popping... buttering the data...", "Finding a movie before your dinner gets cold...",
+        "Revenge bedtime procrastination loading...", "Checking if it's too scary for 2 AM...", "Turning off the lights... loading the show..."
     ]
   };
 
-  // === 2. DEFINE REGION TIMEZONES ===
+  // === 2. TIMEZONE LOGIC ===
   const regionTimezones = {
-    'IN': 'Asia/Kolkata',
-    'US': 'America/New_York', // East Coast default
-    'GB': 'Europe/London',
-    'CA': 'America/Toronto',  // Eastern Time default
-    'AU': 'Australia/Sydney',
-    'BR': 'America/Sao_Paulo',
-    'FR': 'Europe/Paris',
-    'DE': 'Europe/Berlin'
+    'IN': 'Asia/Kolkata', 'US': 'America/New_York', 'GB': 'Europe/London', 'CA': 'America/Toronto',
+    'AU': 'Australia/Sydney', 'BR': 'America/Sao_Paulo', 'FR': 'Europe/Paris', 'DE': 'Europe/Berlin'
   };
 
   function startLoadingText() {
     const textElement = document.querySelector('.loading-text');
     if (!textElement) return;
 
-    // A. Get Selected Region
-    const regionSelect = document.getElementById('region-select');
-    const selectedRegion = regionSelect.value;
+    const regionSelect = document.getElementById('region-select') || document.querySelector('#csv-form select[name="region_code"]');
+    const selectedRegion = regionSelect ? regionSelect.value : 'IN';
     const timeZone = regionTimezones[selectedRegion] || 'UTC';
 
-    // B. Get Hour in THAT Region
     const date = new Date();
-    // Use Intl API to extract the hour in the specific timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        hour12: false,
-        timeZone: timeZone
-    });
+    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timeZone });
     const hour = parseInt(formatter.format(date));
 
-    // C. Pick the Vibe
     let selectedMessages;
-    if (hour >= 5 && hour < 12) {
-        selectedMessages = messages.morning;
-    } else if (hour >= 12 && hour < 20) {
-        selectedMessages = messages.evening;
-    } else {
-        selectedMessages = messages.night;
-    }
+    if (hour >= 5 && hour < 12) selectedMessages = messages.morning;
+    else if (hour >= 12 && hour < 20) selectedMessages = messages.evening;
+    else selectedMessages = messages.night;
 
-    // D. Start Rotation
     let i = 0;
     textElement.textContent = selectedMessages[0];
     
     setInterval(() => {
         i = (i + 1) % selectedMessages.length;
-        textElement.style.opacity = 0; // Fade out
-        
+        textElement.style.opacity = 0;
         setTimeout(() => {
             textElement.textContent = selectedMessages[i];
-            textElement.style.opacity = 1; // Fade in
+            textElement.style.opacity = 1;
         }, 300);
-        
     }, 2000); 
   }
 
-  // Trigger on Form Submit
+  // Trigger on BOTH forms
   document.querySelectorAll('form').forEach(form => {
     form.addEventListener('submit', function() {
       document.getElementById('loader').classList.remove('hidden');
@@ -162,54 +153,45 @@
     });
   });
 
-  // === AUTOCOMPLETE LOGIC (No Changes Needed Here) ===
+  // === AUTOCOMPLETE LOGIC ===
   const searchInput = document.getElementById('movie-search');
   const autocompleteList = document.getElementById('autocomplete-list');
   let debounceTimer;
 
-  searchInput.addEventListener('input', function() {
-    clearTimeout(debounceTimer);
-    const query = this.value;
-    
-    if (query.length < 3) {
-      autocompleteList.innerHTML = '';
-      return;
-    }
+  if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value;
+        if (query.length < 3) { autocompleteList.innerHTML = ''; return; }
 
-    debounceTimer = setTimeout(() => {
-      fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-          autocompleteList.innerHTML = '';
-          const results = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv').slice(0, 5);
-          
-          results.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'autocomplete-item';
-            const title = item.title || item.name;
-            const year = (item.release_date || item.first_air_date || '').split('-')[0];
-            const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
-            
-            div.innerHTML = `<strong>${title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${year})</span> ${typeBadge}`;
-            
-            div.addEventListener('click', function() {
-              searchInput.value = title;
-              document.getElementById('tmdb_id').value = item.id;
-              document.getElementById('media_type').value = item.media_type;
+        debounceTimer = setTimeout(() => {
+          fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
               autocompleteList.innerHTML = '';
+              const results = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv').slice(0, 5);
+              results.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                const title = item.title || item.name;
+                const year = (item.release_date || item.first_air_date || '').split('-')[0];
+                const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
+                div.innerHTML = `<strong>${title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${year})</span> ${typeBadge}`;
+                div.addEventListener('click', function() {
+                  searchInput.value = title;
+                  document.getElementById('tmdb_id').value = item.id;
+                  document.getElementById('media_type').value = item.media_type;
+                  autocompleteList.innerHTML = '';
+                });
+                autocompleteList.appendChild(div);
+              });
             });
-            
-            autocompleteList.appendChild(div);
-          });
-        });
-    }, 300);
-  });
-
-  document.addEventListener('click', function(e) {
-    if (e.target !== searchInput) {
-      autocompleteList.innerHTML = '';
-    }
-  });
+        }, 300);
+      });
+      document.addEventListener('click', function(e) {
+        if (e.target !== searchInput) { autocompleteList.innerHTML = ''; }
+      });
+  }
 </script>
 
 </body>
