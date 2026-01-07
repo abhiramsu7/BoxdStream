@@ -1,299 +1,241 @@
+from flask import Flask, render_template, request, redirect, url_for, flash
 import requests
+import concurrent.futures
 import csv
 import io
-import os
-from datetime import datetime
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-from flask import Flask, render_template, request
-from concurrent.futures import ThreadPoolExecutor
+import time
 
-MAX_WORKERS = 10
+app = Flask(__name__)
+app.secret_key = 'super_secret_key_for_flash_messages'  # Needed for error messages
 
-# =========================
-# MOVIE MODEL
-# =========================
-class Movie:
-    def __init__(self, title, year, tmdb_id=None, media_type="movie"):
-        self.title = title
-        self.year = year
-        self.tmdb_id = tmdb_id
-        self.poster_path = None
-        self.is_released = False
-        self.release_date = None
-        self.streaming_info = {} # Stores { 'ProviderName': {'label': 'Rent', 'logo': 'url...'} }
-        self.media_type = media_type
+# === CONFIGURATION ===
+TMDB_API_KEY = "5b421e05cad15891667ec28db3d9b9ac"
+MAX_WORKERS = 10  # Number of parallel threads for CSV processing
 
-    def __str__(self):
-        if not self.is_released:
-            return "Not Yet Released"
-        if not self.streaming_info:
-            return "Released – Availability Unknown / Not Streaming in Region"
-        # Adjusted to handle the new Dictionary structure for providers
-        providers = [f"{k} ({v['label']})" for k, v in self.streaming_info.items()]
-        return f"Available on: {', '.join(providers)}"
+# === SMART SEARCH ALIASES ===
+# Helper to map common nicknames/typos to Official TMDB Titles
+SEARCH_ALIASES = {
+    "og": "They Call Him OG",
+    "hit 3": "HIT: The Third Case",
+    "hit3": "HIT: The Third Case",
+    "lucky baskar": "Lucky Baskhar",
+    "lucky bhaskar": "Lucky Baskhar",
+    "kalki": "Kalki 2898 AD",
+    "pushpa 2": "Pushpa 2: The Rule",
+    "devara": "Devara: Part 1",
+    "salaar": "Salaar: Part 1 – Ceasefire",
+    "ssmb29": "SSMB29",
+    "game changer": "Game Changer"
+}
 
-    def get_category(self):
-        """Returns the single primary category for the summary counter"""
-        status = str(self)
-        if "Subscription" in status:
-            return "available_free"
-        elif "Rent" in status or "Buy" in status:
-            return "rent_or_buy"
-        elif "Not Yet Released" in status:
-            return "unreleased"
-        else:
-            return "unknown"
+# === CORE FUNCTIONS ===
 
-    def to_dict(self):
-        # Create a clean list of providers with LOGOS for the frontend
-        providers_list = []
-        status_parts = []
-        
-        if self.streaming_info:
-            for name, data in self.streaming_info.items():
-                providers_list.append({
-                    "name": name, 
-                    "label": data["label"],
-                    "logo": data["logo"]
-                })
-                status_parts.append(name)
-            status_text = f"Available on: {', '.join(status_parts)}"
-        else:
-            status_text = "Released – Availability Unknown" if self.is_released else "Not Yet Released"
+def get_providers(tmdb_id, media_type, region):
+    """
+    Fetches streaming availability for a specific TMDB ID in a specific region.
+    """
+    url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}/watch/providers?api_key={TMDB_API_KEY}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if "results" in data and region in data["results"]:
+                return data["results"][region]
+    except Exception as e:
+        print(f"Error fetching providers for {tmdb_id}: {e}")
+    return None
 
-        # UI Class logic
-        if "Subscription" in str(self):
-            ui_class = "available"
-        elif "Rent" in str(self):
-            ui_class = "rent"
-        elif "Not Yet Released" in str(self):
-            ui_class = "not-released"
-        else:
-            ui_class = "released-unknown"
+def process_single_search(query, region, tmdb_id=None, media_type="movie"):
+    """
+    Handles a single movie search (Used for both Search Bar & CSV rows).
+    """
+    # 1. SMART ALIAS CHECK
+    clean_query = query.strip().lower()
+    if clean_query in SEARCH_ALIASES:
+        final_query = SEARCH_ALIASES[clean_query]
+    else:
+        final_query = query
 
-        title_display = self.title
-        if self.media_type == "tv":
-            title_display = f"{self.title} (TV)"
+    # 2. FIND TMDB ID (If not provided)
+    poster_path = None
+    release_date = "N/A"
+    official_title = query
 
-        return {
-            "title": title_display,
-            "year": self.year,
-            "status": status_text,         # Backup text
-            "providers": providers_list,   # NEW: List with Logos
-            "ui_class": ui_class,
-            "poster": (
-                f"https://image.tmdb.org/t/p/w342{self.poster_path}"
-                if self.poster_path else None
-            ),
-            "media_type": self.media_type,
-            "justwatch_link": f"https://www.justwatch.com/in/search?q={self.title}"
-        }
-
-# =========================
-# TMDB CLIENT
-# =========================
-class TMDBClient:
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.base_url = "https://api.themoviedb.org/3"
-        self.today = datetime.now().date()
-
-        retry = Retry(total=3, backoff_factor=1, status_forcelist=[429,500,502,503,504])
-        adapter = HTTPAdapter(max_retries=retry)
-        self.session = requests.Session()
-        self.session.mount("https://", adapter)
-
-    def _get(self, url, params):
+    if not tmdb_id:
+        search_url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={final_query}"
         try:
-            r = self.session.get(url, params=params, timeout=30)
-            r.raise_for_status()
-            return r.json()
-        except:
-            return None
-
-    def search_movie(self, movie):
-        """
-        OPTIMIZED SEARCH:
-        1. If movie already has an ID (from dropdown), fetch details directly.
-        2. If not, use Smart Multi-Search.
-        """
-        
-        # === OPTIMIZATION: DIRECT ID LOOKUP ===
-        if movie.tmdb_id:
-            return self._fetch_details_by_id(movie)
-
-        # === FALLBACK: TEXT SEARCH (For CSVs) ===
-        params = {
-            "api_key": self.api_key, 
-            "query": movie.title,
-            "include_adult": "false"
-        }
-        
-        data = self._get(f"{self.base_url}/search/multi", params)
-        if not data or not data.get("results"):
-            return False
-
-        valid_results = [r for r in data["results"] if r["media_type"] in ["movie", "tv"]]
-        if not valid_results:
-            return False
-
-        best_match = None
-        if movie.year and movie.year != "0000":
-            for r in valid_results:
-                r_date = r.get("release_date") or r.get("first_air_date")
-                if r_date and r_date.split("-")[0] == movie.year:
-                    best_match = r
-                    break
-        
-        if not best_match:
-            best_match = valid_results[0]
-
-        movie.media_type = best_match["media_type"]
-        movie.tmdb_id = best_match["id"]
-        
-        return self._fetch_details_by_id(movie)
-
-    def _fetch_details_by_id(self, movie):
-        """Helper to get poster and release date once we have an ID"""
-        endpoint = f"{self.base_url}/{movie.media_type}/{movie.tmdb_id}"
-        data = self._get(endpoint, {"api_key": self.api_key})
-        
-        if not data:
-            return False
-
-        movie.poster_path = data.get("poster_path")
-        
-        date_key = "release_date" if movie.media_type == "movie" else "first_air_date"
-        release_date = data.get(date_key)
-
-        if release_date:
-            movie.release_date = release_date
-            movie.year = release_date.split("-")[0]
-            try:
-                movie.is_released = datetime.strptime(release_date, "%Y-%m-%d").date() <= self.today
-            except:
-                movie.is_released = True
-        elif movie.poster_path:
-            movie.is_released = True
+            resp = requests.get(search_url).json()
+            if not resp.get('results'):
+                return None  # Return None so we can handle "Not Found" error
             
-        return True
+            # Prefer movies/tv over people
+            results = [r for r in resp['results'] if r['media_type'] in ['movie', 'tv']]
+            if not results:
+                return None
 
-    def get_providers(self, movie, region):
-        if not movie.tmdb_id or not movie.is_released:
-            return
+            first_hit = results[0]
+            tmdb_id = first_hit['id']
+            media_type = first_hit['media_type']
+            official_title = first_hit.get('title') or first_hit.get('name')
+            release_date = first_hit.get('release_date') or first_hit.get('first_air_date') or "N/A"
+            poster_path = first_hit.get('poster_path')
+        except Exception as e:
+            print(f"Search API Error: {e}")
+            return None
+    else:
+        # If ID provided (from Autocomplete), fetch details to get poster/title
+        details_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}"
+        try:
+            first_hit = requests.get(details_url).json()
+            official_title = first_hit.get('title') or first_hit.get('name')
+            release_date = first_hit.get('release_date') or first_hit.get('first_air_date') or "N/A"
+            poster_path = first_hit.get('poster_path')
+        except:
+            pass
 
-        endpoint = f"{self.base_url}/{movie.media_type}/{movie.tmdb_id}/watch/providers"
+    # 3. GET PROVIDERS
+    providers = get_providers(tmdb_id, media_type, region)
+    
+    # 4. FORMAT DATA FOR FRONTEND
+    processed_providers = []
+    
+    if providers:
+        # Flatrate (Streaming)
+        if 'flatrate' in providers:
+            for p in providers['flatrate']:
+                processed_providers.append({
+                    'name': p['provider_name'],
+                    'logo': f"https://image.tmdb.org/t/p/w92{p['logo_path']}",
+                    'label': 'Subscription'
+                })
+        # Rent
+        if 'rent' in providers:
+                for p in providers['rent']:
+                    processed_providers.append({
+                        'name': p['provider_name'],
+                        'logo': f"https://image.tmdb.org/t/p/w92{p['logo_path']}",
+                        'label': 'Rent'
+                    })
+        # Buy (Optional)
+        if 'buy' in providers:
+             for p in providers['buy']:
+                 # Avoid duplicates if provider is already in Rent
+                 if not any(x['name'] == p['provider_name'] for x in processed_providers):
+                    processed_providers.append({
+                        'name': p['provider_name'],
+                        'logo': f"https://image.tmdb.org/t/p/w92{p['logo_path']}",
+                        'label': 'Buy'
+                    })
+
+    # Determine status class for UI
+    if not processed_providers:
+        # Check if movie is unreleased
+        is_future = False
+        try:
+            if release_date != "N/A":
+                year = int(release_date.split('-')[0])
+                current_year = int(time.strftime("%Y"))
+                if year > current_year:
+                    is_future = True
+        except:
+            pass
+            
+        status = "Coming Soon" if is_future else "Not Streaming"
+        ui_class = "unreleased" if is_future else "released-unknown"
+    else:
+        status = "Streaming"
+        ui_class = "streaming"
+
+    return {
+        'title': official_title,
+        'year': release_date.split('-')[0] if '-' in str(release_date) else release_date,
+        'poster': f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None,
+        'providers': processed_providers,
+        'status': status,
+        'ui_class': ui_class,
+        'justwatch_link': f"https://www.justwatch.com/{region.lower()}/search?q={official_title}"
+    }
+
+# === ROUTES ===
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        mode = request.form.get('mode')
+        region = request.form.get('region_code', 'IN')
         
-        data = self._get(endpoint, {"api_key": self.api_key})
-        if not data or region not in data.get("results", {}):
-            return
+        # --- SCENARIO 1: SINGLE SEARCH ---
+        if mode == 'search':
+            title = request.form.get('title')
+            tmdb_id = request.form.get('tmdb_id')
+            media_type = request.form.get('media_type', 'movie')
 
-        r = data["results"][region]
-        for key, label in [("flatrate","Subscription"), # Shortened label
-                           ("buy","Buy"),
-                           ("rent","Rent")]:
-            for p in r.get(key, []):
+            # Process the single movie
+            result = process_single_search(title, region, tmdb_id, media_type)
+
+            # ERROR HANDLING: If process_single_search returned None
+            if not result:
+                flash(f"Could not find any results for '{title}'. Please check the spelling or try the exact English title.", "error")
+                return redirect(url_for('index'))
+
+            return render_template('results.html', results=[result], region=region, summary={})
+
+        # --- SCENARIO 2: CSV UPLOAD (Multi-threaded) ---
+        elif mode == 'csv':
+            if 'file' not in request.files:
+                flash("No file uploaded", "error")
+                return redirect(url_for('index'))
+            
+            file = request.files['file']
+            if file.filename == '':
+                flash("No file selected", "error")
+                return redirect(url_for('index'))
+
+            try:
+                # Read CSV
+                stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+                csv_input = csv.DictReader(stream)
                 
-                provider_name = p["provider_name"]
-                logo_path = p.get("logo_path", "")
-                p_lower = provider_name.lower()
+                # Extract Titles (Letterboxd CSVs usually have 'Name' or 'Title')
+                titles = []
+                for row in csv_input:
+                    if 'Name' in row:
+                        titles.append(row['Name'])
+                    elif 'Title' in row:
+                        titles.append(row['Title'])
+                
+                # Limit to 50 for performance (optional constraint)
+                titles = titles[:50]
 
-                # === JIOHOTSTAR & LOCALIZATION LOGIC ===
-                if region == "IN":
-                    if "hotstar" in p_lower or "jio" in p_lower or "disney" in p_lower:
-                        provider_name = "JioHotstar"
-                else:
-                    if "hotstar" in p_lower:
-                        provider_name = "Disney+"
+                # Process in Parallel
+                results = []
+                with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    # Submit all tasks
+                    future_to_title = {executor.submit(process_single_search, title, region): title for title in titles}
+                    
+                    for future in concurrent.futures.as_completed(future_to_title):
+                        data = future.result()
+                        if data: # Only append valid results
+                            results.append(data)
 
-                # Store both Label AND Logo URL
-                movie.streaming_info[provider_name] = {
-                    "label": label,
-                    "logo": f"https://image.tmdb.org/t/p/original{logo_path}" if logo_path else ""
+                # Calculate Summary Stats
+                free_count = sum(1 for r in results if any(p['label'] == 'Subscription' for p in r['providers']))
+                rent_count = sum(1 for r in results if any(p['label'] in ['Rent', 'Buy'] for p in r['providers']))
+                unreleased_count = sum(1 for r in results if r['status'] == 'Coming Soon')
+
+                summary = {
+                    'available_free': free_count,
+                    'rent_or_buy': rent_count,
+                    'unreleased': unreleased_count
                 }
 
-# =========================
-# WATCHLIST
-# =========================
-class Watchlist:
-    def __init__(self):
-        self.movies = []
+                return render_template('results.html', results=results, region=region, summary=summary)
 
-    def load_csv(self, file):
-        reader = csv.DictReader(file.read().decode("utf-8").splitlines())
-        for row in reader:
-            if row.get("Name") and row.get("Year"):
-                self.movies.append(Movie(row["Name"], row["Year"]))
+            except Exception as e:
+                flash(f"Error processing CSV: {str(e)}", "error")
+                return redirect(url_for('index'))
 
-    def process(self, client, region):
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-            for m in self.movies:
-                ex.submit(self._process_one, m, client, region)
-        return self.movies  # Return objects, not dicts
+    return render_template('index.html')
 
-    def _process_one(self, movie, client, region):
-        if client.search_movie(movie):
-            client.get_providers(movie, region)
-
-# =========================
-# FLASK APP
-# =========================
-app = Flask(__name__)
-
-API_KEY = os.environ.get("API_KEY", "5b421e05cad15891667ec28db3d9b9ac")
-DEFAULT_REGION = "IN"
-
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        mode = request.form.get("mode", "csv")
-        region = request.form.get("region_code", DEFAULT_REGION)
-        client = TMDBClient(API_KEY)
-        
-        results_objects = []
-
-        if mode == "search":
-            title = request.form.get("title", "").strip()
-            tmdb_id = request.form.get("tmdb_id")
-            media_type = request.form.get("media_type", "movie")
-            
-            if not title:
-                return render_template("index.html")
-            
-            movie = Movie(title, "0000", tmdb_id=tmdb_id, media_type=media_type)
-            wl = Watchlist()
-            wl.movies = [movie]
-            results_objects = wl.process(client, region)
-        
-        else:
-            file = request.files.get("file")
-            if not file:
-                return render_template("index.html")
-            
-            wl = Watchlist()
-            wl.load_csv(io.BytesIO(file.read()))
-            results_objects = wl.process(client, region)
-
-        # === FIXED SUMMARY COUNTER ===
-        categories = [m.get_category() for m in results_objects]
-        summary = {
-            "available_free": categories.count("available_free"),
-            "rent_or_buy": categories.count("rent_or_buy"),
-            "unreleased": categories.count("unreleased"),
-            "unknown": categories.count("unknown"),
-            "tv_series": sum(1 for m in results_objects if m.media_type == "tv")
-        }
-        
-        results_dicts = [m.to_dict() for m in results_objects]
-
-        return render_template("results.html",
-                               results=results_dicts,
-                               summary=summary,
-                               mode=mode,
-                               region=region) # Passing region for smart filtering
-
-    return render_template("index.html")
-
-if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0')
+if __name__ == '__main__':
+    app.run(debug=True)
