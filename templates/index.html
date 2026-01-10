@@ -32,6 +32,16 @@
       Check where your favorite movies and shows are streaming across 50+ platforms instantly.
     </p>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="flash-msg {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     <div class="mode-toggle">
       <button class="mode-btn active" id="search-btn" onclick="switchMode('search')">Search Title</button>
       <button class="mode-btn" id="csv-btn" onclick="switchMode('csv')">Upload Watchlist</button>
@@ -100,8 +110,10 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === LOADING MESSAGES ===
-  const messages = {
+  // === 1. MESSAGES DATABASE ===
+  
+  // Regular Weekday Messages (Mon-Fri)
+  const weekdayMessages = {
     morning: [
         "Brewing your morning coffee...",
         "Finding a movie to go with breakfast...",
@@ -128,7 +140,32 @@
     ]
   };
 
-  // === TIMEZONE LOGIC ===
+  // Special Weekend Messages (Sat-Sun)
+  const weekendMessages = {
+    morning: [
+        "Weekend rule #1: Movies in bed are mandatory.",
+        "No alarm clock? Time for a morning marathon.",
+        "Loading... (Hope you have pancakes ready).",
+        "It's the weekend. You're allowed to start watching at 10 AM.",
+        "Brewing extra strong coffee for the weekend watch..."
+    ],
+    evening: [
+        "Saturday night plans: Me, my couch, and this movie.",
+        "Ordering pizza... Scanning for a blockbuster...",
+        "Canceling social plans to stream this. Worth it.",
+        "Weekend mode: ON. Work mode: DELETED.",
+        "Finding the perfect movie for your cheat meal..."
+    ],
+    night: [
+        "No work tomorrow! One more movie won't hurt.",
+        "Is it 2 AM? Who cares, it's the weekend.",
+        "Late night binge session initiating...",
+        "The night is young (and so is your watchlist).",
+        "Sleep can wait. The plot twist cannot."
+    ]
+  };
+
+  // === 2. TIMEZONE & REGION LOGIC ===
   const regionTimezones = {
     'IN': 'Asia/Kolkata',
     'US': 'America/New_York',
@@ -144,32 +181,49 @@
     const textElement = document.querySelector('.loading-text');
     if (!textElement) return;
 
+    // A. Detect Active Form and Region
     const activeForm = document.querySelector('form:not(.hidden)');
     const regionSelect = activeForm ? activeForm.querySelector('select[name="region_code"]') : null;
-    
     const selectedRegion = regionSelect ? regionSelect.value : 'IN';
     const timeZone = regionTimezones[selectedRegion] || 'UTC';
 
+    // B. Get Time AND Day for that Region
     const date = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
+    
+    // Formatter for Hour (0-23)
+    const hourFormatter = new Intl.DateTimeFormat('en-US', {
         hour: 'numeric',
         hour12: false,
         timeZone: timeZone
     });
     
-    const hour = parseInt(formatter.format(date));
+    // Formatter for Day (Sat, Sun, Mon...)
+    const dayFormatter = new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        timeZone: timeZone
+    });
 
-    console.log(`Region: ${selectedRegion}, Timezone: ${timeZone}, Hour Detected: ${hour}`);
+    const hour = parseInt(hourFormatter.format(date));
+    const day = dayFormatter.format(date);
 
+    // C. Determine if it's Weekend (Sat/Sun)
+    const isWeekend = (day === 'Sat' || day === 'Sun');
+    
+    console.log(`Region: ${selectedRegion} | Time: ${hour}:00 | Day: ${day} | Weekend: ${isWeekend}`);
+
+    // D. Select the correct Message Set
+    const messageSource = isWeekend ? weekendMessages : weekdayMessages;
     let selectedMessages;
+
     if (hour >= 5 && hour < 12) {
-        selectedMessages = messages.morning;
+        selectedMessages = messageSource.morning;
     } else if (hour >= 12 && hour < 20) {
-        selectedMessages = messages.evening;
+        selectedMessages = messageSource.evening;
     } else {
-        selectedMessages = messages.night;
+        selectedMessages = messageSource.night;
     }
 
+    // E. Start Rotation
     let i = 0;
     textElement.textContent = selectedMessages[0];
     
@@ -194,6 +248,52 @@
       startLoadingText();
     });
   });
+
+  // === 3. AUTOCOMPLETE LOGIC (FIXED) ===
+  const searchInput = document.getElementById('movie-search');
+  const autocompleteList = document.getElementById('autocomplete-list');
+  let debounceTimer;
+
+  if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        // FIX: Clear the Hidden ID immediately when user types
+        document.getElementById('tmdb_id').value = ''; 
+        document.getElementById('media_type').value = '';
+
+        clearTimeout(debounceTimer);
+        const query = this.value;
+        if (query.length < 3) { autocompleteList.innerHTML = ''; return; }
+
+        debounceTimer = setTimeout(() => {
+          fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+              autocompleteList.innerHTML = '';
+              const results = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv').slice(0, 5);
+              results.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                const title = item.title || item.name;
+                const year = (item.release_date || item.first_air_date || '').split('-')[0];
+                const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
+                div.innerHTML = `<strong>${title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${year})</span> ${typeBadge}`;
+                
+                div.addEventListener('click', function() {
+                  searchInput.value = title;
+                  document.getElementById('tmdb_id').value = item.id;
+                  document.getElementById('media_type').value = item.media_type;
+                  autocompleteList.innerHTML = '';
+                });
+                
+                autocompleteList.appendChild(div);
+              });
+            });
+        }, 300);
+      });
+      document.addEventListener('click', function(e) {
+        if (e.target !== searchInput) { autocompleteList.innerHTML = ''; }
+      });
+  }
 </script>
 
 </body>

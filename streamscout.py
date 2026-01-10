@@ -5,8 +5,6 @@ import csv
 import io
 import time
 from difflib import SequenceMatcher
-import re
-from functools import lru_cache
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_for_flash_messages'
@@ -15,9 +13,8 @@ app.secret_key = 'super_secret_key_for_flash_messages'
 TMDB_API_KEY = "5b421e05cad15891667ec28db3d9b9ac"
 MAX_WORKERS = 10
 
-# === ENHANCED SEARCH OPTIMIZATION ===
-
-# 1. Direct Aliases (exact matches)
+# === 1. DICTIONARY (For Nicknames/Shortforms) ===
+# This is "Google's Knowledge Graph" - mapping slang to official titles
 SEARCH_ALIASES = {
     "og": "They Call Him OG",
     "hit 3": "HIT: The Third Case",
@@ -32,266 +29,101 @@ SEARCH_ALIASES = {
     "ssmb29": "SSMB29",
     "game changer": "Game Changer",
     "gamechanger": "Game Changer",
-    "rrr": "RRR"
+    "rrr": "RRR",
+    "vnb": "Vishwambhara",
+    "hunter": "Hunter: The God of Sex",
+    "spirit": "Spirit"
 }
 
-# 2. Expanded Popular Titles Database with metadata for instant autocomplete
-POPULAR_TITLES_DB = [
-    {"title": "They Call Him OG", "year": "2025", "type": "movie", "tmdb_id": 1064213, "aliases": ["og"]},
-    {"title": "HIT: The Third Case", "year": "2025", "type": "movie", "tmdb_id": 1182373, "aliases": ["hit 3", "hit3"]},
-    {"title": "Lucky Baskhar", "year": "2024", "type": "movie", "tmdb_id": 1034062, "aliases": ["lucky baskar"]},
-    {"title": "Kalki 2898 AD", "year": "2024", "type": "movie", "tmdb_id": 951491, "aliases": ["kalki"]},
-    {"title": "Pushpa 2: The Rule", "year": "2024", "type": "movie", "tmdb_id": 1043905, "aliases": ["pushpa 2", "pushpa2"]},
-    {"title": "Pushpa: The Rise", "year": "2021", "type": "movie", "tmdb_id": 675327, "aliases": ["pushpa 1", "pushpa"]},
-    {"title": "Devara: Part 1", "year": "2024", "type": "movie", "tmdb_id": 1034541, "aliases": ["devara"]},
-    {"title": "Salaar: Part 1 – Ceasefire", "year": "2023", "type": "movie", "tmdb_id": 985939, "aliases": ["salaar", "salar"]},
-    {"title": "Game Changer", "year": "2025", "type": "movie", "tmdb_id": 957222, "aliases": ["gamechanger"]},
-    {"title": "RRR", "year": "2022", "type": "movie", "tmdb_id": 882569, "aliases": ["rrr"]},
-    {"title": "Baahubali: The Beginning", "year": "2015", "type": "movie", "tmdb_id": 317011, "aliases": ["bahubali 1"]},
-    {"title": "Baahubali 2: The Conclusion", "year": "2017", "type": "movie", "tmdb_id": 420809, "aliases": ["bahubali 2"]},
-    {"title": "KGF Chapter 1", "year": "2018", "type": "movie", "tmdb_id": 496797, "aliases": ["kgf 1"]},
-    {"title": "KGF Chapter 2", "year": "2022", "type": "movie", "tmdb_id": 762504, "aliases": ["kgf 2"]},
-    {"title": "Tillu Square", "year": "2024", "type": "movie", "tmdb_id": 1083862, "aliases": []},
-    {"title": "Hanu Man", "year": "2024", "type": "movie", "tmdb_id": 1023313, "aliases": ["hanuman"]},
-    {"title": "Hi Nanna", "year": "2023", "type": "movie", "tmdb_id": 1139644, "aliases": []},
-    {"title": "Eagle", "year": "2024", "type": "movie", "tmdb_id": 1092076, "aliases": []},
-    {"title": "The Greatest of All Time", "year": "2024", "type": "movie", "tmdb_id": 1066262, "aliases": ["goat"]},
-    {"title": "Indian 2", "year": "2024", "type": "movie", "tmdb_id": 447277, "aliases": []},
-    {"title": "Maharaja", "year": "2024", "type": "movie", "tmdb_id": 1039690, "aliases": []},
-    {"title": "Manjummel Boys", "year": "2024", "type": "movie", "tmdb_id": 1068540, "aliases": []},
-    {"title": "Aavesham", "year": "2024", "type": "movie", "tmdb_id": 1226578, "aliases": []},
-]
+# === CORE FUNCTIONS ===
 
-def normalize_query(query):
-    """Normalize search query for better matching"""
-    query = query.lower().strip()
-    query = re.sub(r'[:\-–—]', ' ', query)
-    query = re.sub(r'\s+', ' ', query)
-    
-    replacements = {
-        'pt': 'part', 'chap': 'chapter', 'ch': 'chapter',
-        '&': 'and', '2': 'two', '3': 'three',
-    }
-    
-    words = query.split()
-    normalized_words = [replacements.get(w, w) for w in words]
-    return ' '.join(normalized_words)
+def calculate_similarity(a, b):
+    """Returns a score (0.0 to 1.0) of how similar two strings are."""
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
-def fuzzy_match_score(query, title):
-    """Calculate similarity score between query and title"""
-    query_norm = normalize_query(query)
-    title_norm = normalize_query(title)
-    
-    # Exact match gets highest score
-    if query_norm == title_norm:
-        return 1.0
-    
-    if query_norm in title_norm:
-        return 0.95
-    
-    query_words = set(query_norm.split())
-    title_words = set(title_norm.split())
-    
-    if query_words.issubset(title_words):
-        return 0.90
-    
-    return SequenceMatcher(None, query_norm, title_norm).ratio()
-
-def instant_autocomplete_search(query, limit=8):
+def find_best_match(results, user_query):
     """
-    INSTANT autocomplete - searches local database first, then TMDB
-    Returns results in milliseconds
+    SMART ENGINE: Prioritizes Text Match over Popularity.
+    This fixes the 'Anora' bug.
     """
-    if len(query) < 2:
-        return []
-    
-    results = []
-    seen_ids = set()  # Track seen TMDB IDs to avoid duplicates
-    query_lower = query.lower().strip()
-    
-    # PHASE 1: INSTANT - Search local popular database (< 1ms)
-    for movie in POPULAR_TITLES_DB:
-        score = 0
+    if not results:
+        return None
         
-        # Check exact alias match
-        if query_lower in movie['aliases']:
-            score = 1.0
-        # Check exact title match
-        elif query_lower == movie['title'].lower():
-            score = 1.0
-        # Check title contains query
-        elif query_lower in movie['title'].lower():
-            score = 0.9
-        # Fuzzy match
-        else:
-            score = fuzzy_match_score(query, movie['title'])
-        
-        if score > 0.5:
-            results.append({
-                'title': movie['title'],
-                'year': movie['year'],
-                'tmdb_id': movie['tmdb_id'],
-                'media_type': movie['type'],
-                'score': score,
-                'source': 'local'
-            })
-            seen_ids.add(movie['tmdb_id'])
-    
-    # Sort by score
-    results.sort(key=lambda x: x['score'], reverse=True)
-    
-    # If we have excellent local results, return immediately
-    if len(results) >= 3 and results[0]['score'] >= 0.9:
-        return results[:limit]
-    
-    # PHASE 2: FAST - Query TMDB API (parallel to local results)
-    try:
-        tmdb_results = quick_tmdb_search(query, limit=5)
-        
-        # Merge with local results, avoiding duplicates
-        for tmdb_result in tmdb_results:
-            if tmdb_result['tmdb_id'] not in seen_ids:
-                results.append(tmdb_result)
-                seen_ids.add(tmdb_result['tmdb_id'])
-        
-        # Re-sort combined results
-        results.sort(key=lambda x: x['score'], reverse=True)
-        
-    except Exception as e:
-        print(f"TMDB autocomplete error: {e}")
-    
-    return results[:limit]
+    candidates = results[:10] # Look at top 10 results
+    best_candidate = None
+    best_score = -1
 
-@lru_cache(maxsize=200)
-def quick_tmdb_search(query, limit=5):
-    """Cached TMDB search with timeout for speed"""
-    search_url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={query}"
-    
-    try:
-        resp = requests.get(search_url, timeout=1).json()
-        results = []
+    for item in candidates:
+        title = item.get('title') or item.get('name') or ""
+        popularity = item.get('popularity', 0)
         
-        for item in resp.get('results', [])[:limit]:
-            if item.get('media_type') not in ['movie', 'tv']:
-                continue
-                
-            title = item.get('title') or item.get('name', '')
-            year = (item.get('release_date') or item.get('first_air_date') or '')[:4]
+        # 1. Similarity Score (0 to 1)
+        sim_score = calculate_similarity(user_query, title)
+        
+        # Boost if the title STARTS with the query (e.g., "Hit 3" matches "Hit: The Third Case")
+        if title.lower().startswith(user_query.lower()):
+            sim_score += 0.2
+
+        # 2. Weighted Calculation
+        # Similarity is worth 100 points. Popularity is worth tiny fractions.
+        # This ensures a 90% text match ALWAYS beats a popular unrelated movie.
+        final_score = (sim_score * 100) + (popularity * 0.01)
+        
+        if final_score > best_score:
+            best_score = final_score
+            best_candidate = item
             
-            results.append({
-                'title': title,
-                'year': year,
-                'tmdb_id': item['id'],
-                'media_type': item['media_type'],
-                'score': fuzzy_match_score(query, title),
-                'source': 'tmdb'
-            })
-        
-        return results
-    except:
-        return []
-
-def smart_search_preprocess(query):
-    """Enhanced preprocessing with instant local search"""
-    clean_query = query.strip().lower()
-    
-    # Check exact aliases
-    if clean_query in SEARCH_ALIASES:
-        return SEARCH_ALIASES[clean_query], 1.0
-    
-    # Check local database
-    for movie in POPULAR_TITLES_DB:
-        if clean_query in movie['aliases']:
-            return movie['title'], 1.0
-        if clean_query == movie['title'].lower():
-            return movie['title'], 1.0
-        if fuzzy_match_score(query, movie['title']) > 0.85:
-            return movie['title'], 0.9
-    
-    return query, 0
-
-def search_tmdb_multi_strategy(query, region):
-    """Multi-strategy search with caching"""
-    preprocessed_query, confidence = smart_search_preprocess(query)
-    
-    search_url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={preprocessed_query}"
-    
-    try:
-        resp = requests.get(search_url, timeout=5).json()
-        results = [r for r in resp.get('results', []) if r.get('media_type') in ['movie', 'tv']]
-        
-        if results and confidence > 0.7:
-            return results[0], results[0]['media_type']
-        
-        if results:
-            for result in results[:5]:
-                title = result.get('title') or result.get('name', '')
-                if fuzzy_match_score(query, title) > 0.6:
-                    return result, result['media_type']
-            return results[0], results[0]['media_type']
-        
-    except Exception as e:
-        print(f"Search API Error: {e}")
-    
-    # Fallback to original query
-    if preprocessed_query != query:
-        try:
-            search_url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={query}"
-            resp = requests.get(search_url, timeout=5).json()
-            results = [r for r in resp.get('results', []) if r.get('media_type') in ['movie', 'tv']]
-            if results:
-                return results[0], results[0]['media_type']
-        except:
-            pass
-    
-    # Try year extraction
-    year_match = re.search(r'\b(19|20)\d{2}\b', query)
-    if year_match:
-        query_without_year = query.replace(year_match.group(), '').strip()
-        year = year_match.group()
-        
-        try:
-            search_url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={query_without_year}&year={year}"
-            resp = requests.get(search_url, timeout=5).json()
-            results = [r for r in resp.get('results', []) if r.get('media_type') in ['movie', 'tv']]
-            if results:
-                return results[0], results[0]['media_type']
-        except:
-            pass
-    
-    return None, None
+    return best_candidate
 
 def get_providers(tmdb_id, media_type, region):
-    """Fetches streaming availability"""
     url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}/watch/providers?api_key={TMDB_API_KEY}"
     try:
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=3)
         if response.status_code == 200:
             data = response.json()
             if "results" in data and region in data["results"]:
                 return data["results"][region]
-    except Exception as e:
-        print(f"Error fetching providers for {tmdb_id}: {e}")
+    except:
+        pass
     return None
 
 def process_single_search(query, region, tmdb_id=None, media_type="movie"):
-    """Handles a single movie search"""
+    official_title = query
     poster_path = None
     release_date = "N/A"
-    official_title = query
 
-    if not tmdb_id:
-        result, found_media_type = search_tmdb_multi_strategy(query, region)
-        
-        if not result:
-            return None
-        
-        tmdb_id = result['id']
-        media_type = found_media_type
-        official_title = result.get('title') or result.get('name')
-        release_date = result.get('release_date') or result.get('first_air_date') or "N/A"
-        poster_path = result.get('poster_path')
+    # --- STEP 1: ALIAS CHECK ---
+    # Convert "OG" -> "They Call Him OG" immediately
+    clean_query = query.strip().lower()
+    if clean_query in SEARCH_ALIASES:
+        final_query = SEARCH_ALIASES[clean_query]
     else:
+        final_query = query
+
+    # --- STEP 2: FIND THE MOVIE ---
+    if not tmdb_id:
+        search_url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={final_query}&include_adult=false"
+        try:
+            resp = requests.get(search_url).json()
+            valid_results = [r for r in resp.get('results', []) if r['media_type'] in ['movie', 'tv']]
+            
+            if not valid_results:
+                return None
+
+            # Use the new Smart Matcher
+            first_hit = find_best_match(valid_results, final_query)
+            
+            tmdb_id = first_hit['id']
+            media_type = first_hit['media_type']
+            official_title = first_hit.get('title') or first_hit.get('name')
+            release_date = first_hit.get('release_date') or first_hit.get('first_air_date') or "N/A"
+            poster_path = first_hit.get('poster_path')
+            
+        except Exception as e:
+            print(f"Search Error: {e}")
+            return None
+    else:
+        # If ID is provided (Autocomplete clicked)
         details_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}"
         try:
             first_hit = requests.get(details_url).json()
@@ -301,6 +133,7 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie"):
         except:
             pass
 
+    # --- STEP 3: GET PROVIDERS ---
     providers = get_providers(tmdb_id, media_type, region)
     processed_providers = []
     
@@ -328,6 +161,7 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie"):
                         'label': 'Buy'
                     })
 
+    # --- STEP 4: STATUS ---
     if not processed_providers:
         is_future = False
         try:
@@ -354,30 +188,6 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie"):
         'ui_class': ui_class,
         'justwatch_link': f"https://www.justwatch.com/{region.lower()}/search?q={official_title}"
     }
-
-# === NEW ROUTE: INSTANT AUTOCOMPLETE API ===
-@app.route('/api/autocomplete')
-def autocomplete():
-    """Lightning-fast autocomplete endpoint"""
-    query = request.args.get('q', '')
-    
-    if len(query) < 2:
-        return jsonify([])
-    
-    results = instant_autocomplete_search(query, limit=8)
-    
-    # Format for frontend
-    suggestions = []
-    for r in results:
-        suggestions.append({
-            'title': r['title'],
-            'year': r['year'],
-            'tmdb_id': r['tmdb_id'],
-            'media_type': r['media_type'],
-            'display': f"{r['title']} ({r['year']})"
-        })
-    
-    return jsonify(suggestions)
 
 # === ROUTES ===
 @app.route('/', methods=['GET', 'POST'])
@@ -412,33 +222,23 @@ def index():
             try:
                 stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
                 csv_input = csv.DictReader(stream)
-                
                 titles = []
                 for row in csv_input:
-                    if 'Name' in row:
-                        titles.append(row['Name'])
-                    elif 'Title' in row:
-                        titles.append(row['Title'])
+                    if 'Name' in row: titles.append(row['Name'])
+                    elif 'Title' in row: titles.append(row['Title'])
                 
                 titles = titles[:50]
-
                 results = []
                 with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                     future_to_title = {executor.submit(process_single_search, title, region): title for title in titles}
-                    
                     for future in concurrent.futures.as_completed(future_to_title):
                         data = future.result()
-                        if data:
-                            results.append(data)
-
-                free_count = sum(1 for r in results if any(p['label'] == 'Subscription' for p in r['providers']))
-                rent_count = sum(1 for r in results if any(p['label'] in ['Rent', 'Buy'] for p in r['providers']))
-                unreleased_count = sum(1 for r in results if r['status'] == 'Coming Soon')
+                        if data: results.append(data)
 
                 summary = {
-                    'available_free': free_count,
-                    'rent_or_buy': rent_count,
-                    'unreleased': unreleased_count
+                    'available_free': sum(1 for r in results if any(p['label'] == 'Subscription' for p in r['providers'])),
+                    'rent_or_buy': sum(1 for r in results if any(p['label'] in ['Rent', 'Buy'] for p in r['providers'])),
+                    'unreleased': sum(1 for r in results if r['status'] == 'Coming Soon')
                 }
 
                 return render_template('results.html', results=results, region=region, summary=summary)
