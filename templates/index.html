@@ -41,7 +41,14 @@
       <input type="hidden" name="mode" value="search">
       
       <div style="position:relative; flex:1; min-width:250px;">
-        <input type="text" name="title" class="search-input" placeholder="Search for a movie or TV show..." required autocomplete="off" id="movie-search">
+        <input 
+          type="text" 
+          name="title" 
+          class="search-input" 
+          placeholder="Search for a movie or TV show..." 
+          required 
+          autocomplete="off" 
+          id="movie-search">
         <div id="autocomplete-list" class="autocomplete-dropdown"></div>
       </div>
 
@@ -93,7 +100,7 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  // === 1. MESSAGES ===
+  // === LOADING MESSAGES ===
   const messages = {
     morning: [
         "Brewing your morning coffee...",
@@ -121,7 +128,7 @@
     ]
   };
 
-  // === 2. TIMEZONE LOGIC ===
+  // === TIMEZONE LOGIC ===
   const regionTimezones = {
     'IN': 'Asia/Kolkata',
     'US': 'America/New_York',
@@ -137,16 +144,12 @@
     const textElement = document.querySelector('.loading-text');
     if (!textElement) return;
 
-    // FIX: Find the dropdown inside the CURRENTLY VISIBLE form
-    // This ensures we check the form the user actually clicked "Search" on
     const activeForm = document.querySelector('form:not(.hidden)');
     const regionSelect = activeForm ? activeForm.querySelector('select[name="region_code"]') : null;
     
-    // Default to 'IN' if something goes wrong
     const selectedRegion = regionSelect ? regionSelect.value : 'IN';
     const timeZone = regionTimezones[selectedRegion] || 'UTC';
 
-    // Get current hour in THAT specific timezone
     const date = new Date();
     const formatter = new Intl.DateTimeFormat('en-US', {
         hour: 'numeric',
@@ -156,24 +159,20 @@
     
     const hour = parseInt(formatter.format(date));
 
-    // Debugging logs (Check console F12 to verify)
     console.log(`Region: ${selectedRegion}, Timezone: ${timeZone}, Hour Detected: ${hour}`);
 
-    // Pick the Vibe
     let selectedMessages;
     if (hour >= 5 && hour < 12) {
-        selectedMessages = messages.morning; // 5 AM - 11:59 AM
+        selectedMessages = messages.morning;
     } else if (hour >= 12 && hour < 20) {
-        selectedMessages = messages.evening; // 12 PM - 7:59 PM
+        selectedMessages = messages.evening;
     } else {
-        selectedMessages = messages.night;   // 8 PM - 4:59 AM
+        selectedMessages = messages.night;
     }
 
-    // Start Rotation
     let i = 0;
     textElement.textContent = selectedMessages[0];
     
-    // Clear any existing interval
     if (window.loadingInterval) clearInterval(window.loadingInterval);
 
     window.loadingInterval = setInterval(() => {
@@ -195,46 +194,6 @@
       startLoadingText();
     });
   });
-
-  // === AUTOCOMPLETE LOGIC ===
-  const searchInput = document.getElementById('movie-search');
-  const autocompleteList = document.getElementById('autocomplete-list');
-  let debounceTimer;
-
-  if (searchInput) {
-      searchInput.addEventListener('input', function() {
-        clearTimeout(debounceTimer);
-        const query = this.value;
-        if (query.length < 3) { autocompleteList.innerHTML = ''; return; }
-
-        debounceTimer = setTimeout(() => {
-          fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}`)
-            .then(response => response.json())
-            .then(data => {
-              autocompleteList.innerHTML = '';
-              const results = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv').slice(0, 5);
-              results.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'autocomplete-item';
-                const title = item.title || item.name;
-                const year = (item.release_date || item.first_air_date || '').split('-')[0];
-                const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
-                div.innerHTML = `<strong>${title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${year})</span> ${typeBadge}`;
-                div.addEventListener('click', function() {
-                  searchInput.value = title;
-                  document.getElementById('tmdb_id').value = item.id;
-                  document.getElementById('media_type').value = item.media_type;
-                  autocompleteList.innerHTML = '';
-                });
-                autocompleteList.appendChild(div);
-              });
-            });
-        }, 300);
-      });
-      document.addEventListener('click', function(e) {
-        if (e.target !== searchInput) { autocompleteList.innerHTML = ''; }
-      });
-  }
 </script>
 
 </body>
