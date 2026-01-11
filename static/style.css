@@ -488,14 +488,24 @@ small{
   border-radius:14px;
   text-align:center;
   min-width:140px;
-  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); /* Faster transition for clicks */
   border:1px solid rgba(255,255,255,0.05);
+  
+  /* === NEW: MAKE IT CLICKABLE === */
+  cursor: pointer;
+  user-select: none; /* Prevents text highlighting when clicking fast */
 }
 
 .summary div:hover{
   transform:translateY(-4px);
   border-color:var(--accent);
   box-shadow:0 8px 24px rgba(124,124,255,0.2);
+}
+
+/* === NEW: CLICK PRESS EFFECT === */
+.summary div:active {
+  transform: scale(0.95);
+  border-color: var(--accent);
 }
 
 .summary div strong{
@@ -528,12 +538,16 @@ small{
   width:100%;
 }
 
+/* === NEW: ENSURE FILTERING WORKS === */
+.card.hidden {
+  display: none !important;
+}
+
 .card:hover{
   transform:translateY(-8px);
   border-color:rgba(124,124,255,0.3);
   box-shadow:0 12px 32px rgba(124,124,255,0.15);
 }
-
 .poster{
   width:100%;
   border-radius:12px;
