@@ -1,230 +1,250 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BoxdStream Results</title>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoxdStream Results</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* === FOOTER STYLING === */
+        .footer {
+            margin-top: 60px;
+            padding: 40px 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .footer-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-tagline {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary, #e0e0e0);
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .attribution {
+            font-size: 0.75rem;
+            color: var(--text-secondary, rgba(255, 255, 255, 0.3));
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .attribution .brand {
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 700;
+        }
+
+        .heart {
+            display: inline-block;
+            color: #e50914;
+            animation: heartbeat 1.5s infinite ease-in-out;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+    </style>
 </head>
 <body>
 
 <header class="nav">
-  <a href="/" class="logo">
-    <span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span>
-  </a>
-  <div class="nav-right">
-    <div class="nav-toolbar">
-      <a href="/" class="icon-btn" title="New Search / Back">←</a>
-      <div class="separator"></div>
-      <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+    <a href="/" class="logo">
+        <span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span>
+    </a>
+    <div class="nav-right">
+        <div class="nav-toolbar">
+            <a href="/" class="icon-btn" title="New Search / Back">←</a>
+            <div class="separator"></div>
+            <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+        </div>
     </div>
-  </div>
 </header>
 
 <section class="summary">
-  <div onclick="filterMovies('free', null)" style="cursor:pointer" title="Click to see Free movies">
-    <strong>{{ summary.available_free }}</strong><span>Free to Watch</span>
-  </div>
-  <div onclick="filterMovies('Rent', null)" style="cursor:pointer" title="Click to see Rent/Buy movies">
-    <strong>{{ summary.rent_or_buy }}</strong><span>Rent / Buy</span>
-  </div>
-  <div onclick="filterMovies('unavailable', null)" style="cursor:pointer" title="Click to see Not Streaming movies">
-    <strong>{{ summary.not_streaming }}</strong><span>Not Streaming</span>
-  </div>
-  <div onclick="filterMovies('unreleased', null)" style="cursor:pointer" title="Click to see Coming Soon">
-    <strong>{{ summary.unreleased }}</strong><span>Coming Soon</span>
-  </div>
+    <div onclick="filterMovies('free', null)" style="cursor:pointer" title="Click to see Free movies">
+        <strong>{{ summary.available_free }}</strong><span>Free to Watch</span>
+    </div>
+    <div onclick="filterMovies('Rent', null)" style="cursor:pointer" title="Click to see Rent/Buy movies">
+        <strong>{{ summary.rent_or_buy }}</strong><span>Rent / Buy</span>
+    </div>
+    <div onclick="filterMovies('unavailable', null)" style="cursor:pointer" title="Click to see Not Streaming movies">
+        <strong>{{ summary.not_streaming }}</strong><span>Not Streaming</span>
+    </div>
+    <div onclick="filterMovies('unreleased', null)" style="cursor:pointer" title="Click to see Coming Soon">
+        <strong>{{ summary.unreleased }}</strong><span>Coming Soon</span>
+    </div>
 </section>
 
 <div class="filter-bar-container">
-  <div class="filter-bar">
-    <button class="filter-btn active" onclick="filterMovies('all', this)">All</button>
-    
-    <button class="filter-btn" onclick="filterMovies('Netflix', this)">Netflix</button>
-    <button class="filter-btn" onclick="filterMovies('Prime', this)">Prime Video</button>
-    <button class="filter-btn" onclick="filterMovies('Apple', this)">Apple TV</button>
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterMovies('all', this)">All</button>
+        <button class="filter-btn" onclick="filterMovies('Netflix', this)">Netflix</button>
+        <button class="filter-btn" onclick="filterMovies('Prime', this)">Prime Video</button>
+        <button class="filter-btn" onclick="filterMovies('Apple', this)">Apple TV</button>
 
-    {% if region == 'IN' %}
-        <button class="filter-btn" onclick="filterMovies('JioHotstar', this)">JioHotstar</button>
-        <button class="filter-btn" onclick="filterMovies('Zee5', this)">ZEE5</button>
-        <button class="filter-btn" onclick="filterMovies('Sony', this)">SonyLIV</button>
-        <button class="filter-btn" onclick="filterMovies('Aha', this)">Aha</button>
-    {% endif %}
-    
-    {% if region != 'IN' %}
-        <button class="filter-btn" onclick="filterMovies('Disney', this)">Disney+</button>
-        <button class="filter-btn" onclick="filterMovies('Hulu', this)">Hulu</button>
-    {% endif %}
+        {% if region == 'IN' %}
+            <button class="filter-btn" onclick="filterMovies('JioHotstar', this)">JioHotstar</button>
+            <button class="filter-btn" onclick="filterMovies('Zee5', this)">ZEE5</button>
+            <button class="filter-btn" onclick="filterMovies('Sony', this)">SonyLIV</button>
+            <button class="filter-btn" onclick="filterMovies('Aha', this)">Aha</button>
+        {% endif %}
+        
+        {% if region != 'IN' %}
+            <button class="filter-btn" onclick="filterMovies('Disney', this)">Disney+</button>
+            <button class="filter-btn" onclick="filterMovies('Hulu', this)">Hulu</button>
+        {% endif %}
 
-    <button class="filter-btn" onclick="filterMovies('Rent', this)">Rent/Buy</button>
-  </div>
+        <button class="filter-btn" onclick="filterMovies('Rent', this)">Rent/Buy</button>
+    </div>
 </div>
 
 <section class="grid {% if results|length == 1 %}single-result{% endif %}">
 {% for movie in results %}
-  <div class="card {{ movie.ui_class }}" 
-       data-status="{{ 'free' if movie.ui_class == 'streaming' else 'other' }}"
-       data-specific-status="{{ movie.status }}"> {% if movie.poster %}
-      <img src="{{ movie.poster }}" alt="{{ movie.title }}" class="poster" loading="lazy">
-    {% else %}
-      <div class="poster placeholder"><span>No Poster</span></div>
-    {% endif %}
+    <div class="card {{ movie.ui_class }}" 
+         data-status="{{ 'free' if movie.ui_class == 'streaming' else 'other' }}"
+         data-specific-status="{{ movie.status }}"> 
+        {% if movie.poster %}
+            <img src="{{ movie.poster }}" alt="{{ movie.title }}" class="poster" loading="lazy">
+        {% else %}
+            <div class="poster placeholder"><span>No Poster</span></div>
+        {% endif %}
 
-    <h3>{{ movie.title }}</h3>
-    <div class="year">{{ movie.year }}</div>
+        <h3>{{ movie.title }}</h3>
+        <div class="year">{{ movie.year }}</div>
 
-    <div class="card-status">
-      {% if movie.providers %}
-        <div class="provider-grid">
-        {% for p in movie.providers %}
-          <a href="{{ p.link }}" 
-             target="_blank" 
-             class="provider-icon" 
-             title="Watch on {{ p.name }} ({{ p.label }})"
-             data-name="{{ p.name }}" 
-             data-label="{{ p.label }}">
-            {% if p.logo %}
-                <img src="{{ p.logo }}" alt="{{ p.name }}">
+        <div class="card-status">
+            {% if movie.providers %}
+                <div class="provider-grid">
+                {% for p in movie.providers %}
+                    <a href="{{ p.link }}" target="_blank" class="provider-icon" title="Watch on {{ p.name }}" data-name="{{ p.name }}" data-label="{{ p.label }}">
+                        {% if p.logo %}
+                            <img src="{{ p.logo }}" alt="{{ p.name }}">
+                        {% else %}
+                            <span>{{ p.name[:3] }}</span>
+                        {% endif %}
+                        {% if p.label != 'Subscription' %}
+                            <span class="mini-tag">{{ p.label }}</span>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+                </div>
             {% else %}
-                <span style="font-size:0.6rem; display:flex; align-items:center; justify-content:center; height:100%; color:white;">{{ p.name[:3] }}</span>
+                <span class="static-status">{{ movie.status }}</span>
             {% endif %}
-            {% if p.label != 'Subscription' %}
-                <span class="mini-tag">{{ p.label }}</span>
-            {% endif %}
-          </a>
-        {% endfor %}
         </div>
-      {% else %}
-        <span class="static-status">{{ movie.status }}</span>
-      {% endif %}
     </div>
-
-  </div>
 {% endfor %}
 </section>
 
 <div id="empty-state" class="empty-state hidden">
-    <div class="empty-icon">👻</div>
+    <div class="empty-icon" id="empty-emoji">👻</div>
     <h3 id="empty-title">It's a ghost town here.</h3>
-    <p>None of your watchlist movies match this filter.</p>
-    <button onclick="filterMovies('all', document.querySelector('.filter-btn'))" class="reset-btn">
-        View All Movies
-    </button>
+    <p id="empty-desc">None of your watchlist movies match this filter.</p>
+    <button onclick="filterMovies('all', document.querySelector('.filter-btn'))" class="reset-btn">View All Movies</button>
 </div>
 
 <footer class="footer">
-  <p>BoxdStream • Powered by TMDB</p>
+    <div class="footer-container">
+        <p class="main-tagline">
+            Watchlists deserve closure <span class="heart">❤️</span>
+        </p>
+        
+        <div class="attribution">
+            <span class="brand">BoxdStream</span> • Powered by TMDB
+        </div>
+    </div>
 </footer>
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-  function filterMovies(filter, btn) {
-    // 1. Manage Button Active State
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    if (btn) {
-        btn.classList.add('active');
-    } else {
-        // If triggered by Summary Box, deactivate all filter buttons to avoid confusion
-        // Or highlight 'All' if resetting.
-        if (filter === 'all') document.querySelector('.filter-btn').classList.add('active');
-    }
+    const emptyMessages = {
+        'netflix': { emoji: "📺", title: "Tudum... Silence.", desc: "Are you still watching? Because we couldn't find any matches here." },
+        'prime': { emoji: "📦", title: "Delivery Delayed.", desc: "Even Prime One-Day delivery couldn't find these movies." },
+        'aha': { emoji: "🧡", title: "Aha! ... Em Kanipinchadam Ledu.", desc: "100% Telugu, but 0% found in this list. Try another filter!" },
+        'hotstar': { emoji: "🏏", title: "Out for a Duck!", desc: "Disney magic couldn't conjure up these results." },
+        'zee5': { emoji: "🦓", title: "Zee-ro Results Found.", desc: "Looks like the drama is happening elsewhere." },
+        'sonyliv': { emoji: "🛋️", title: "LIV a Little...", desc: "...somewhere else. No matches found here." },
+        'jio': { emoji: "📶", title: "Network Issue?", desc: "Just kidding, your net is fine. The movies just aren't here." },
+        'apple': { emoji: "🍎", title: "Too Expensive?", desc: "Maybe these movies were too premium for this list." },
+        'free': { emoji: "💸", title: "No Free Lunch.", desc: "All these movies require rent or aren't streaming yet." },
+        'rent': { emoji: "💳", title: "Wallet Safe.", desc: "Nothing to rent or buy here." },
+        'unreleased': { emoji: "📅", title: "All Released!", desc: "Every movie in your list has already hit the screens." },
+        'unavailable': { emoji: "🎉", title: "Everything is Streaming!", desc: "Great news! All your movies are available somewhere." },
+        'default': { emoji: "👻", title: "It's a ghost town here.", desc: "None of your watchlist movies match this filter." }
+    };
 
-    const cards = document.querySelectorAll('.card');
-    const emptyState = document.getElementById('empty-state');
-    const emptyTitle = document.getElementById('empty-title');
-    
-    let visibleCount = 0;
-    
-    cards.forEach(card => {
-      const badges = card.querySelectorAll('.provider-icon');
-      const cardStatus = card.getAttribute('data-specific-status'); // "Streaming", "Not Streaming", "Coming Soon"
-      
-      // === LOGIC START ===
-      let showCard = false;
+    function filterMovies(filter, btn) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        else if (filter === 'all') document.querySelector('.filter-btn').classList.add('active');
 
-      // A. "ALL" Filter
-      if (filter === 'all') {
-        showCard = true;
-        badges.forEach(b => b.style.display = 'block'); // Show all badges
-      }
-      
-      // B. "FREE" (Subscription) Filter (From Summary Box)
-      else if (filter === 'free') {
-        // Check if card has ANY subscription badge
-        let hasSub = false;
-        badges.forEach(b => {
-            if (b.getAttribute('data-label') === 'Subscription') hasSub = true;
-        });
-        if (hasSub) showCard = true;
-        // Hide Rent/Buy badges on the card to focus view
-        badges.forEach(b => {
-             if (b.getAttribute('data-label') !== 'Subscription') b.style.display = 'none';
-             else b.style.display = 'block';
-        });
-      }
+        const cards = document.querySelectorAll('.card');
+        let visibleCount = 0;
+        
+        cards.forEach(card => {
+            const badges = card.querySelectorAll('.provider-icon');
+            const cardStatus = card.getAttribute('data-specific-status');
+            let showCard = false;
 
-      // C. "UNAVAILABLE" Filter (Not Streaming)
-      else if (filter === 'unavailable') {
-        if (cardStatus === 'Not Streaming' || cardStatus === 'Not Found') showCard = true;
-      }
-
-      // D. "UNRELEASED" Filter (Coming Soon)
-      else if (filter === 'unreleased') {
-        if (cardStatus === 'Coming Soon') showCard = true;
-      }
-
-      // E. PROVIDER / RENT FILTERS (From Filter Bar)
-      else {
-          let hasProviderMatch = false;
-          badges.forEach(badge => {
-            const name = badge.getAttribute('data-name').toLowerCase();
-            const label = badge.getAttribute('data-label').toLowerCase();
-            const filterLower = filter.toLowerCase();
-            let isBadgeMatch = false;
-            
-            // JIOHOTSTAR MERGED LOGIC
-            if (filter === 'JioHotstar') {
-                if (name.includes('jio') || name.includes('hotstar') || name.includes('disney')) isBadgeMatch = true;
-            } 
-            else if (filter === 'Rent') {
-                if (label.includes('rent') || label.includes('buy')) isBadgeMatch = true;
-            } 
-            else {
-                if (name.includes(filterLower)) isBadgeMatch = true;
-            }
-
-            if (isBadgeMatch) {
-              badge.style.display = 'block';
-              hasProviderMatch = true;
+            if (filter === 'all') {
+                showCard = true;
+                badges.forEach(b => b.style.display = 'block');
+            } else if (filter === 'free') {
+                let hasSub = false;
+                badges.forEach(b => { if (b.getAttribute('data-label') === 'Subscription') hasSub = true; });
+                if (hasSub) showCard = true;
+                badges.forEach(b => { b.style.display = (b.getAttribute('data-label') === 'Subscription') ? 'block' : 'none'; });
+            } else if (filter === 'unavailable') {
+                if (cardStatus === 'Not Streaming' || cardStatus === 'Not Found') showCard = true;
+            } else if (filter === 'unreleased') {
+                if (cardStatus === 'Coming Soon') showCard = true;
             } else {
-              badge.style.display = 'none'; 
+                let hasProviderMatch = false;
+                badges.forEach(badge => {
+                    const name = badge.getAttribute('data-name').toLowerCase();
+                    const label = badge.getAttribute('data-label').toLowerCase();
+                    const filterLower = filter.toLowerCase();
+                    let isMatch = false;
+                    
+                    if (filter === 'JioHotstar') { if (name.includes('jio') || name.includes('hotstar') || name.includes('disney')) isMatch = true; }
+                    else if (filter === 'Rent') { if (label.includes('rent') || label.includes('buy')) isMatch = true; }
+                    else { if (name.includes(filterLower)) isMatch = true; }
+
+                    if (isMatch) { badge.style.display = 'block'; hasProviderMatch = true; } 
+                    else { badge.style.display = 'none'; }
+                });
+                if (hasProviderMatch) showCard = true;
             }
-          });
-          
-          if (hasProviderMatch) showCard = true;
-      }
 
-      // === APPLY VISIBILITY ===
-      if (showCard) {
-        card.classList.remove('hidden');
-        visibleCount++;
-      } else {
-        card.classList.add('hidden');
-      }
-    });
+            if (showCard) { card.classList.remove('hidden'); visibleCount++; } 
+            else { card.classList.add('hidden'); }
+        });
 
-    // Empty State Logic
-    if (visibleCount === 0) {
-        emptyState.classList.remove('hidden');
-        if (filter === 'JioHotstar') emptyTitle.textContent = "No Jio/Hotstar content found.";
-        else if (filter === 'free') emptyTitle.textContent = "No free streaming movies found.";
-        else emptyTitle.textContent = "It's a ghost town here.";
-    } else {
-        emptyState.classList.add('hidden');
+        const emptyState = document.getElementById('empty-state');
+        if (visibleCount === 0) {
+            emptyState.classList.remove('hidden');
+            let key = 'default';
+            const p = filter.toLowerCase();
+            for (const k in emptyMessages) { if (p.includes(k)) key = k; }
+            const msg = emptyMessages[key] || emptyMessages['default'];
+            document.getElementById('empty-emoji').textContent = msg.emoji;
+            document.getElementById('empty-title').textContent = msg.title;
+            document.getElementById('empty-desc').textContent = msg.desc;
+        } else {
+            emptyState.classList.add('hidden');
+        }
     }
-  }
 </script>
-
 </body>
 </html>
