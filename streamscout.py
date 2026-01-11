@@ -5,16 +5,17 @@ import csv
 import io
 import time
 from difflib import SequenceMatcher
+import urllib.parse 
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_for_flash_messages'
 
 # === CONFIGURATION ===
 TMDB_API_KEY = "5b421e05cad15891667ec28db3d9b9ac"
-MAX_WORKERS = 10
+# Increase workers slightly to handle 130+ movies faster
+MAX_WORKERS = 15 
 
-# === 1. DICTIONARY (For Nicknames/Shortforms) ===
-# This is "Google's Knowledge Graph" - mapping slang to official titles
+# === 1. DICTIONARY ===
 SEARCH_ALIASES = {
     "og": "They Call Him OG",
     "hit 3": "HIT: The Third Case",
@@ -32,24 +33,46 @@ SEARCH_ALIASES = {
     "rrr": "RRR",
     "vnb": "Vishwambhara",
     "hunter": "Hunter: The God of Sex",
-    "spirit": "Spirit"
+    "spirit": "Spirit",
+    "jigris": "Jigra",
+    "jigra": "Jigra"
 }
+
+# === 2. HELPER: SMART LINK GENERATOR ===
+def get_provider_link(provider_name, movie_title):
+    title_enc = urllib.parse.quote(movie_title)
+    p_lower = provider_name.lower()
+
+    if any(x in p_lower for x in ["jio", "hotstar", "disney", "jiostar"]):
+        return f"https://www.jiocinema.com/search?q={title_enc}"
+
+    if "netflix" in p_lower:
+        return f"https://www.netflix.com/search?q={title_enc}"
+    if "prime" in p_lower or "amazon" in p_lower:
+        return f"https://www.primevideo.com/search/ref=atv_nb_sr?phrase={title_enc}"
+    if "apple" in p_lower:
+        return f"https://tv.apple.com/search?term={title_enc}"
+    if "zee5" in p_lower:
+        return f"https://www.zee5.com/search?q={title_enc}"
+    if "sonyliv" in p_lower:
+        return f"https://www.sonyliv.com/search?q={title_enc}"
+    if "aha" in p_lower:
+        return f"https://www.aha.video/search?q={title_enc}"
+    if "sun nxt" in p_lower:
+        return f"https://www.sunnxt.com/search?q={title_enc}"
+    if "youtube" in p_lower or "google" in p_lower:
+        return f"https://www.youtube.com/results?search_query={title_enc}"
+    
+    return f"https://www.google.com/search?q={title_enc}+{urllib.parse.quote(provider_name)}"
 
 # === CORE FUNCTIONS ===
 
 def calculate_similarity(a, b):
-    """Returns a score (0.0 to 1.0) of how similar two strings are."""
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 def find_best_match(results, user_query):
-    """
-    SMART ENGINE: Prioritizes Text Match over Popularity.
-    This fixes the 'Anora' bug.
-    """
-    if not results:
-        return None
-        
-    candidates = results[:10] # Look at top 10 results
+    if not results: return None
+    candidates = results[:10]
     best_candidate = None
     best_score = -1
 
@@ -57,17 +80,12 @@ def find_best_match(results, user_query):
         title = item.get('title') or item.get('name') or ""
         popularity = item.get('popularity', 0)
         
-        # 1. Similarity Score (0 to 1)
         sim_score = calculate_similarity(user_query, title)
         
-        # Boost if the title STARTS with the query (e.g., "Hit 3" matches "Hit: The Third Case")
-        if title.lower().startswith(user_query.lower()):
+        if title.lower().startswith(user_query.lower()[:3]):
             sim_score += 0.2
 
-        # 2. Weighted Calculation
-        # Similarity is worth 100 points. Popularity is worth tiny fractions.
-        # This ensures a 90% text match ALWAYS beats a popular unrelated movie.
-        final_score = (sim_score * 100) + (popularity * 0.01)
+        final_score = (sim_score * 100) + (popularity * 0.02)
         
         if final_score > best_score:
             best_score = final_score
@@ -92,25 +110,21 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie"):
     poster_path = None
     release_date = "N/A"
 
-    # --- STEP 1: ALIAS CHECK ---
-    # Convert "OG" -> "They Call Him OG" immediately
+    # Alias Check
     clean_query = query.strip().lower()
     if clean_query in SEARCH_ALIASES:
         final_query = SEARCH_ALIASES[clean_query]
     else:
         final_query = query
 
-    # --- STEP 2: FIND THE MOVIE ---
+    # Find Movie
     if not tmdb_id:
         search_url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={final_query}&include_adult=false"
         try:
             resp = requests.get(search_url).json()
             valid_results = [r for r in resp.get('results', []) if r['media_type'] in ['movie', 'tv']]
-            
-            if not valid_results:
-                return None
+            if not valid_results: return None
 
-            # Use the new Smart Matcher
             first_hit = find_best_match(valid_results, final_query)
             
             tmdb_id = first_hit['id']
@@ -118,12 +132,9 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie"):
             official_title = first_hit.get('title') or first_hit.get('name')
             release_date = first_hit.get('release_date') or first_hit.get('first_air_date') or "N/A"
             poster_path = first_hit.get('poster_path')
-            
-        except Exception as e:
-            print(f"Search Error: {e}")
+        except:
             return None
     else:
-        # If ID is provided (Autocomplete clicked)
         details_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}"
         try:
             first_hit = requests.get(details_url).json()
@@ -133,46 +144,40 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie"):
         except:
             pass
 
-    # --- STEP 3: GET PROVIDERS ---
+    # Get Providers
     providers = get_providers(tmdb_id, media_type, region)
     processed_providers = []
     
     if providers:
+        def add_provider(p_data, label):
+            link = get_provider_link(p_data['provider_name'], official_title)
+            return {
+                'name': p_data['provider_name'],
+                'logo': f"https://image.tmdb.org/t/p/w92{p_data['logo_path']}",
+                'label': label,
+                'link': link
+            }
+
         if 'flatrate' in providers:
             for p in providers['flatrate']:
-                processed_providers.append({
-                    'name': p['provider_name'],
-                    'logo': f"https://image.tmdb.org/t/p/w92{p['logo_path']}",
-                    'label': 'Subscription'
-                })
+                processed_providers.append(add_provider(p, 'Subscription'))
         if 'rent' in providers:
             for p in providers['rent']:
-                processed_providers.append({
-                    'name': p['provider_name'],
-                    'logo': f"https://image.tmdb.org/t/p/w92{p['logo_path']}",
-                    'label': 'Rent'
-                })
+                processed_providers.append(add_provider(p, 'Rent'))
         if 'buy' in providers:
             for p in providers['buy']:
                 if not any(x['name'] == p['provider_name'] for x in processed_providers):
-                    processed_providers.append({
-                        'name': p['provider_name'],
-                        'logo': f"https://image.tmdb.org/t/p/w92{p['logo_path']}",
-                        'label': 'Buy'
-                    })
+                    processed_providers.append(add_provider(p, 'Buy'))
 
-    # --- STEP 4: STATUS ---
+    # Status
     if not processed_providers:
         is_future = False
         try:
             if release_date != "N/A":
                 year = int(release_date.split('-')[0])
                 current_year = int(time.strftime("%Y"))
-                if year > current_year:
-                    is_future = True
-        except:
-            pass
-            
+                if year > current_year: is_future = True
+        except: pass
         status = "Coming Soon" if is_future else "Not Streaming"
         ui_class = "unreleased" if is_future else "released-unknown"
     else:
@@ -227,7 +232,10 @@ def index():
                     if 'Name' in row: titles.append(row['Name'])
                     elif 'Title' in row: titles.append(row['Title'])
                 
-                titles = titles[:50]
+                # --- LIMIT REMOVED ---
+                # We are now processing ALL titles.
+                # titles = titles[:50]  <-- DELETED THIS LINE
+
                 results = []
                 with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                     future_to_title = {executor.submit(process_single_search, title, region): title for title in titles}
@@ -235,10 +243,13 @@ def index():
                         data = future.result()
                         if data: results.append(data)
 
+                # IMPROVED SUMMARY STATS
+                # Now we count "Not Streaming" too, so the numbers add up!
                 summary = {
                     'available_free': sum(1 for r in results if any(p['label'] == 'Subscription' for p in r['providers'])),
                     'rent_or_buy': sum(1 for r in results if any(p['label'] in ['Rent', 'Buy'] for p in r['providers'])),
-                    'unreleased': sum(1 for r in results if r['status'] == 'Coming Soon')
+                    'unreleased': sum(1 for r in results if r['status'] == 'Coming Soon'),
+                    'not_streaming': sum(1 for r in results if r['status'] == 'Not Streaming') # New Stat
                 }
 
                 return render_template('results.html', results=results, region=region, summary=summary)

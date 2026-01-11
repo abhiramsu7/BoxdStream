@@ -16,9 +16,7 @@
   <div class="nav-right">
     <div class="nav-toolbar">
       <a href="/" class="icon-btn" title="New Search / Back">←</a>
-      
       <div class="separator"></div>
-      
       <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
     </div>
   </div>
@@ -27,6 +25,7 @@
 <section class="summary">
   <div><strong>{{ summary.available_free }}</strong><span>Free to Watch</span></div>
   <div><strong>{{ summary.rent_or_buy }}</strong><span>Rent / Buy</span></div>
+  <div><strong>{{ summary.not_streaming }}</strong><span>Not Streaming</span></div>
   <div><strong>{{ summary.unreleased }}</strong><span>Coming Soon</span></div>
 </section>
 
@@ -71,10 +70,12 @@
       {% if movie.providers %}
         <div class="provider-grid">
         {% for p in movie.providers %}
-          <div class="provider-icon" 
-               title="{{ p.name }} ({{ p.label }})"
-               data-name="{{ p.name }}" 
-               data-label="{{ p.label }}">
+          <a href="{{ p.link }}" 
+             target="_blank" 
+             class="provider-icon" 
+             title="Watch on {{ p.name }} ({{ p.label }})"
+             data-name="{{ p.name }}" 
+             data-label="{{ p.label }}">
             
             {% if p.logo %}
                 <img src="{{ p.logo }}" alt="{{ p.name }}">
@@ -85,7 +86,7 @@
             {% if p.label != 'Subscription' %}
                 <span class="mini-tag">{{ p.label }}</span>
             {% endif %}
-          </div>
+          </a>
         {% endfor %}
         </div>
       {% else %}
@@ -128,7 +129,6 @@
     const emptyState = document.getElementById('empty-state');
     const emptyTitle = document.getElementById('empty-title');
     const emptyFilterName = document.getElementById('empty-filter-name');
-    const emptyIcon = document.querySelector('.empty-icon');
     
     let visibleCount = 0;
     
@@ -149,7 +149,14 @@
         const filterLower = filter.toLowerCase();
         let isMatch = false;
         
-        if (filter === 'Rent') {
+        // === UPDATED LOGIC FOR JIOHOTSTAR ===
+        if (filter === 'JioHotstar') {
+            // Match any of the merged platforms
+            if (name.includes('jio') || name.includes('hotstar') || name.includes('disney')) {
+                isMatch = true;
+            }
+        } 
+        else if (filter === 'Rent') {
             if (label.includes('rent') || label.includes('buy')) isMatch = true;
         } else {
             if (name.includes(filterLower)) isMatch = true;
@@ -174,27 +181,7 @@
     if (visibleCount === 0) {
         emptyState.classList.remove('hidden');
         emptyFilterName.textContent = filter;
-
-        if (filter === 'Aha') {
-            emptyTitle.textContent = "Aha! ...Wait, false alarm.";
-            emptyIcon.textContent = "😅";
-        } else if (filter === 'Netflix') {
-            emptyTitle.textContent = "Tudum... Silence.";
-            emptyIcon.textContent = "🍿";
-        } else if (filter === 'Prime') {
-            emptyTitle.textContent = "Empty box delivered.";
-            emptyIcon.textContent = "📦";
-        } else if (filter === 'JioHotstar') {
-            emptyTitle.textContent = "No drama (or cricket) here.";
-            emptyIcon.textContent = "🏏";
-        } else if (filter === 'Apple') {
-            emptyTitle.textContent = "Think Different... try another app.";
-            emptyIcon.textContent = "🍎";
-        } else {
-            emptyTitle.textContent = "It's a ghost town here.";
-            emptyIcon.textContent = "👻";
-        }
-
+        emptyTitle.textContent = "It's a ghost town here.";
     } else {
         emptyState.classList.add('hidden');
     }
