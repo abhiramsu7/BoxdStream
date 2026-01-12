@@ -10,6 +10,10 @@ from datetime import datetime
 from difflib import SequenceMatcher
 import urllib.parse 
 
+# === IMPORT THE SEARCH ENGINE ===
+# Ensure search_engine.py is in the same folder
+from searchengine import engine
+
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_for_flash_messages'
 
@@ -89,7 +93,6 @@ def find_best_match(results, user_query, target_year=None):
     best_score = -1
 
     for item in candidates:
-        # HANDLE BOTH MOVIE AND TV KEYS
         title = item.get('title') or item.get('name') or ""
         release_date = item.get('release_date') or item.get('first_air_date') or ""
         popularity = item.get('popularity', 0)
@@ -118,7 +121,6 @@ def find_best_match(results, user_query, target_year=None):
     return best_candidate
 
 def get_providers(tmdb_id, media_type, region):
-    # Dynamic Media Type (movie/tv)
     url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}/watch/providers?api_key={TMDB_API_KEY}"
     try:
         response = session.get(url, timeout=5)
@@ -150,65 +152,56 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
 
     movies_to_process = []
 
-    # --- 1. FIND CONTENT (Movies OR TV) ---
+    # --- 1. FIND CONTENT (INTEGRATED SEARCH ENGINE) ---
     if not tmdb_id:
-        # FIX: Reverted to 'search/multi' to include TV Series
-        search_url = f"https://api.themoviedb.org/3/search/multi"
-        params = {"api_key": TMDB_API_KEY, "query": final_query, "include_adult": "false", "page": 1}
+        ranked_results = engine.search(final_query)
         
-        try:
-            resp = session.get(search_url, params=params).json()
-            # Filter out 'person' results
-            valid_results = [r for r in resp.get('results', []) if r.get('media_type') in ['movie', 'tv']]
+        if ranked_results:
+            # OPTIMIZATION: If Year is provided, pick the best match
+            if year:
+                first_hit = find_best_match(ranked_results, final_query, target_year=year) or ranked_results[0]
+            else:
+                first_hit = ranked_results[0]
             
-            if valid_results:
-                first_hit = find_best_match(valid_results, final_query, target_year=year) or valid_results[0]
-                
-                # Check for Franchise (Only applies to Movies)
-                if first_hit['media_type'] == 'movie':
-                    details_url = f"https://api.themoviedb.org/3/movie/{first_hit['id']}?api_key={TMDB_API_KEY}"
+            # Check for Franchise
+            m_type = first_hit.get('media_type', 'movie')
+            
+            if m_type == 'movie':
+                details_url = f"https://api.themoviedb.org/3/movie/{first_hit['id']}?api_key={TMDB_API_KEY}"
+                try:
                     details = session.get(details_url).json()
                     collection = details.get('belongs_to_collection')
                     
                     if collection:
-                        # Fetch Collection Parts
                         parts = get_collection_parts(collection['id'])
-                        # Ensure parts have media_type set to 'movie' manually since collection endpoint might miss it
                         for p in parts: p['media_type'] = 'movie' 
                         movies_to_process = parts
                     else:
                         movies_to_process = [first_hit]
-                else:
-                    # It's a TV Show, just process it directly
+                except:
                     movies_to_process = [first_hit]
-
             else:
-                 return [{
-                    'title': query, 'year': year if year else "Unknown", 'poster': None, 'providers': [],
-                    'status': "Not Found", 'ui_class': "not-found", 'justwatch_link': "#"
-                }]
-        except:
+                movies_to_process = [first_hit]
+        else:
              return [{
-                    'title': query, 'year': "Error", 'poster': None, 'providers': [],
-                    'status': "Error", 'ui_class': "not-found", 'justwatch_link': "#"
-                }]
+                'title': query, 'year': year if year else "Unknown", 'poster': None, 'providers': [],
+                'status': "Not Found", 'ui_class': "not-found", 'justwatch_link': "#"
+            }]
     else:
         # ID provided case
         details_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}"
         try:
             first_hit = session.get(details_url).json()
-            # Ensure media_type is attached if missing
             if 'media_type' not in first_hit: first_hit['media_type'] = media_type
             movies_to_process = [first_hit]
         except: pass
 
-    # --- PROCESS LIST (Loop through franchise or single result) ---
+    # --- PROCESS LIST ---
     final_results = []
     
     for item in movies_to_process:
         m_id = item['id']
-        # Handle difference between Movie and TV keys
-        m_type = item.get('media_type', 'movie') # Default to movie if missing
+        m_type = item.get('media_type', 'movie')
         m_title = item.get('title') or item.get('name')
         m_date = item.get('release_date') or item.get('first_air_date') or "N/A"
         m_poster = item.get('poster_path')
@@ -219,7 +212,7 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
         else:
             poster_url = f"https://image.tmdb.org/t/p/w500{m_poster}" if m_poster else "https://via.placeholder.com/500x750?text=No+Poster"
 
-        # Providers logic (Pass correct m_type)
+        # Providers logic
         providers = get_providers(m_id, m_type, region)
         processed_providers = []
         if providers:
@@ -286,9 +279,8 @@ def index():
         if mode == 'search':
             title = request.form.get('title')
             tmdb_id = request.form.get('tmdb_id')
-            media_type = request.form.get('media_type') # Get media_type from form
+            media_type = request.form.get('media_type') 
             
-            # Pass media_type to processing
             results = process_single_search(title, region, tmdb_id, media_type)
             
             if not results or results[0]['status'] == "Not Found":
@@ -313,7 +305,6 @@ def index():
                 
                 results = []
                 with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                    # CSV defaults to finding whatever fits (movie/tv not enforced)
                     future_to_task = {
                         executor.submit(process_single_search, t['name'], region, None, None, t['year']): t 
                         for t in tasks
@@ -347,6 +338,57 @@ def index():
                 return redirect(url_for('index'))
 
     return render_template('index.html')
+
+# === NEW: BACKEND AUTOCOMPLETE ROUTE ===
+@app.route('/api/autocomplete')
+def autocomplete():
+    query = request.args.get('q', '').strip().lower()
+    if not query: return []
+
+    # 1. APPLY ALIASES (Fixes "OG" -> "They Call Him OG")
+    final_query = query
+    if query in SEARCH_ALIASES:
+        final_query = SEARCH_ALIASES[query]
+
+    # 2. CALL TMDB
+    url = "https://api.themoviedb.org/3/search/multi"
+    params = {
+        "api_key": TMDB_API_KEY,
+        "query": final_query,
+        "include_adult": "false",
+        "language": "en-US",
+        "page": 1
+    }
+    
+    try:
+        resp = session.get(url, params=params).json()
+        results = resp.get('results', [])
+        
+        clean_results = []
+        for item in results:
+            media_type = item.get('media_type')
+            if media_type not in ['movie', 'tv']: continue
+            
+            title = item.get('title') or item.get('name')
+            date = item.get('release_date') or item.get('first_air_date') or ""
+            year = date.split('-')[0] if date else ""
+            
+            clean_results.append({
+                "title": title,
+                "year": year,
+                "tmdb_id": item['id'],
+                "media_type": media_type,
+                "popularity": item.get('popularity', 0)
+            })
+
+        # 3. SORT BY POPULARITY (Fixes "Fast and Furious" junk results)
+        clean_results.sort(key=lambda x: x['popularity'], reverse=True)
+        
+        return clean_results[:7]
+        
+    except Exception as e:
+        print(f"Autocomplete Error: {e}")
+        return []
 
 if __name__ == '__main__':
     app.run(debug=True)

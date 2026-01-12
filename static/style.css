@@ -1,4 +1,3 @@
-
 :root {
   --bg:#0b0d12;
   --surface:#121622;
@@ -488,12 +487,10 @@ small{
   border-radius:14px;
   text-align:center;
   min-width:140px;
-  transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); /* Faster transition for clicks */
+  transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border:1px solid rgba(255,255,255,0.05);
-  
-  /* === NEW: MAKE IT CLICKABLE === */
   cursor: pointer;
-  user-select: none; /* Prevents text highlighting when clicking fast */
+  user-select: none;
 }
 
 .summary div:hover{
@@ -502,7 +499,6 @@ small{
   box-shadow:0 8px 24px rgba(124,124,255,0.2);
 }
 
-/* === NEW: CLICK PRESS EFFECT === */
 .summary div:active {
   transform: scale(0.95);
   border-color: var(--accent);
@@ -538,7 +534,6 @@ small{
   width:100%;
 }
 
-/* === NEW: ENSURE FILTERING WORKS === */
 .card.hidden {
   display: none !important;
 }

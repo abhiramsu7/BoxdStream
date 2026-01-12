@@ -238,7 +238,7 @@
         });
     });
 
-    // === 3. AUTOCOMPLETE LOGIC ===
+    // === 3. AUTOCOMPLETE LOGIC (Calls Backend) ===
     const searchInput = document.getElementById('movie-search');
     const autocompleteList = document.getElementById('autocomplete-list');
     let debounceTimer;
@@ -247,33 +247,40 @@
         searchInput.addEventListener('input', function() {
             document.getElementById('tmdb_id').value = ''; 
             document.getElementById('media_type').value = '';
+            
             clearTimeout(debounceTimer);
             const query = this.value;
-            if (query.length < 3) { autocompleteList.innerHTML = ''; return; }
+            
+            if (query.length < 2) { 
+                autocompleteList.innerHTML = ''; 
+                return; 
+            }
+
             debounceTimer = setTimeout(() => {
-                fetch(`https://api.themoviedb.org/3/search/multi?api_key=5b421e05cad15891667ec28db3d9b9ac&query=${encodeURIComponent(query)}`)
+                fetch(`/api/autocomplete?q=${encodeURIComponent(query)}`)
                     .then(response => response.json())
                     .then(data => {
                         autocompleteList.innerHTML = '';
-                        const results = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv').slice(0, 5);
-                        results.forEach(item => {
+                        // No filtering needed here, backend sends top 7 sorted results
+                        data.forEach(item => {
                             const div = document.createElement('div');
                             div.className = 'autocomplete-item';
-                            const title = item.title || item.name;
-                            const year = (item.release_date || item.first_air_date || '').split('-')[0];
                             const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
-                            div.innerHTML = `<strong>${title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${year})</span> ${typeBadge}`;
+                            div.innerHTML = `<strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span> ${typeBadge}`;
+                            
                             div.addEventListener('click', function() {
-                                searchInput.value = title;
-                                document.getElementById('tmdb_id').value = item.id;
+                                searchInput.value = item.title;
+                                document.getElementById('tmdb_id').value = item.tmdb_id;
                                 document.getElementById('media_type').value = item.media_type;
                                 autocompleteList.innerHTML = '';
                             });
+                            
                             autocompleteList.appendChild(div);
                         });
                     });
-            }, 300);
+            }, 200);
         });
+        
         document.addEventListener('click', function(e) {
             if (e.target !== searchInput) { autocompleteList.innerHTML = ''; }
         });
