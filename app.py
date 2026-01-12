@@ -37,7 +37,6 @@ SEARCH_ALIASES = {
     "gamechanger": "Game Changer",
     "rrr": "RRR",
     "vnb": "Vishwambhara",
-    "hunter": "Hunter: The God of Sex",
     "jigris": "Jigra",
     "jigra": "Jigra",
     "spirit": "Spirit Prabhas",

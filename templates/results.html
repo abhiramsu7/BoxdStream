@@ -7,43 +7,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* === FOOTER STYLING === */
-        .footer {
-            margin-top: 60px;
-            padding: 40px 20px;
+        /* === NEW: CLOSURE BANNER (Top of Page) === */
+        .closure-banner {
             text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.2);
+            padding: 30px 20px 10px; /* Spacing above summary */
+            animation: fadeIn 0.8s ease-out;
         }
 
-        .footer-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .main-tagline {
-            font-size: 1.2rem;
+        .closure-text {
+            font-size: 1.4rem; /* Prominent size */
             font-weight: 700;
             color: var(--text-primary, #e0e0e0);
-            margin: 0;
             letter-spacing: -0.5px;
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .attribution {
-            font-size: 0.75rem;
-            color: var(--text-secondary, rgba(255, 255, 255, 0.3));
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .attribution .brand {
-            color: rgba(255, 255, 255, 0.5);
-            font-weight: 700;
-        }
-
+        /* Heart Animation */
         .heart {
             display: inline-block;
             color: #e50914;
@@ -53,6 +35,33 @@
         @keyframes heartbeat {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.2); }
+        }
+
+        /* === FOOTER (Minimal) === */
+        .footer {
+            margin-top: 60px;
+            padding: 30px 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .attribution {
+            font-size: 0.8rem;
+            color: var(--text-secondary, rgba(255, 255, 255, 0.4));
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        .attribution span {
+            font-weight: 700;
+            color: var(--text-primary, #fff);
+            opacity: 0.8;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -70,6 +79,12 @@
         </div>
     </div>
 </header>
+
+<div class="closure-banner">
+    <p class="closure-text">
+        Watchlists deserve closure <span class="heart">❤️</span>
+    </p>
+</div>
 
 <section class="summary">
     <div onclick="filterMovies('free', null)" style="cursor:pointer" title="Click to see Free movies">
@@ -155,14 +170,8 @@
 </div>
 
 <footer class="footer">
-    <div class="footer-container">
-        <p class="main-tagline">
-            Watchlists deserve closure <span class="heart">❤️</span>
-        </p>
-        
-        <div class="attribution">
-            <span class="brand">BoxdStream</span> • Powered by TMDB
-        </div>
+    <div class="attribution">
+        <span>BoxdStream</span> • Powered by TMDB
     </div>
 </footer>
 

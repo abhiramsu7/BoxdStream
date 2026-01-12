@@ -100,9 +100,9 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-    // === TAGLINE & LOADING LOGIC ===
+    // === 1. TAGLINE & LOADING TEXT LOGIC (Keep existing) ===
     document.addEventListener("DOMContentLoaded", function() {
-        const taglines = ["Made with <span class='heart'>❤️</span> for Cinema.", "Because life is too short for bad buffers. 🍿", "Turning 'One day' into 'Today'. 🎬", "Every movie has a home. We just find it. 🏠", "From our watchlist to yours. 💌", "Cinema is a language we all speak. 🌍", "Less searching, more watching. 🍿", "Curated for the cinephile in you. ⭐", "Clearing watchlists, one stream at a time. ✅", "Built by fans, for the fans. <span class='heart'>❤️</span>", "The magic of movies, just a click away. ✨", "Your watchlist called. It wants to be watched. 📞"];
+        const taglines = [ "Made with <span class='heart'>❤️</span> for Cinema.", "Because life is too short for bad buffers. 🍿", "Turning 'One day' into 'Today'. 🎬", "Every movie has a home. We just find it. 🏠", "From our watchlist to yours. 💌", "Cinema is a language we all speak. 🌍", "Less searching, more watching. 🍿", "Curated for the cinephile in you. ⭐", "Clearing watchlists, one stream at a time. ✅", "Built by fans, for the fans. <span class='heart'>❤️</span>", "The magic of movies, just a click away. ✨", "Your watchlist called. It wants to be watched. 📞"];
         const taglineElement = document.getElementById('home-tagline');
         function changeTagline() {
             taglineElement.style.opacity = 0; 
@@ -144,42 +144,68 @@
         }, 2000); 
     }
 
+    // === 2. SMOOTH SUBMIT FUNCTION (The Delay Fix) ===
+    function smoothSubmit() {
+        const loader = document.getElementById('loader');
+        const autocompleteList = document.getElementById('autocomplete-list');
+        const searchForm = document.getElementById('search-form');
+
+        // 1. Hide dropdown immediately
+        if(autocompleteList) {
+            autocompleteList.innerHTML = '';
+            autocompleteList.classList.remove('active');
+        }
+
+        // 2. Show Loader & Start Text
+        if(loader) loader.classList.remove('hidden');
+        startLoadingText();
+
+        // 3. WAIT 1.5 SECONDS -> Then Submit
+        setTimeout(() => {
+            searchForm.submit();
+        }, 1500); 
+    }
+
+    // Intercept default form submit button
     document.querySelectorAll('form').forEach(form => {
-        form.addEventListener('submit', function() {
-            document.getElementById('loader').classList.remove('hidden');
-            startLoadingText();
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Stop instant submit
+            smoothSubmit();     // Use smooth submit
         });
     });
 
-    // === AUTOCOMPLETE & ENTER KEY LOGIC ===
+    // === 3. AUTOCOMPLETE & ENTER KEY LOGIC ===
     const searchInput = document.getElementById('movie-search');
     const autocompleteList = document.getElementById('autocomplete-list');
-    const searchForm = document.getElementById('search-form'); 
+    const regionSelect = document.getElementById('region-select-search'); 
     let debounceTimer;
     let currentFocus = -1; 
 
-    // GLOBAL ENTER LISTENER
-    document.addEventListener("keydown", function(e) {
-        if (e.key === "Enter") {
-            const activeElement = document.activeElement;
-            const isDropdownOpen = autocompleteList.innerHTML.trim() !== "";
-            // If dropdown open & item selected -> Click it
-            if (isDropdownOpen && currentFocus > -1) {
-                e.preventDefault();
-                const items = autocompleteList.getElementsByClassName("autocomplete-item");
-                if (items[currentFocus]) items[currentFocus].click();
-            } 
-            // Else -> Submit Search
-            else if (searchInput.value.trim().length > 0) {
-                if (!activeElement.tagName.match(/TEXTAREA|SELECT/) && activeElement !== document.querySelector('input[type="file"]')) {
-                    autocompleteList.innerHTML = ''; 
-                    searchForm.submit();
+    if (searchInput) {
+        
+        // A. GLOBAL ENTER KEY LISTENER
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") {
+                const activeElement = document.activeElement;
+                const isDropdownOpen = autocompleteList.innerHTML.trim() !== "";
+
+                // Case 1: Dropdown open + Item selected -> Click it
+                if (isDropdownOpen && currentFocus > -1) {
+                    e.preventDefault();
+                    const items = autocompleteList.getElementsByClassName("autocomplete-item");
+                    if (items[currentFocus]) items[currentFocus].click();
+                } 
+                // Case 2: Just hit Enter -> Smooth Submit
+                else if (searchInput.value.trim().length > 0) {
+                    if (!activeElement.tagName.match(/TEXTAREA|SELECT/) && activeElement !== document.querySelector('input[type="file"]')) {
+                        e.preventDefault(); 
+                        smoothSubmit(); 
+                    }
                 }
             }
-        }
-    });
+        });
 
-    if (searchInput) {
+        // B. ARROW NAVIGATION
         searchInput.addEventListener("keydown", function(e) {
             let items = autocompleteList.getElementsByClassName("autocomplete-item");
             if (e.key === "ArrowDown") { currentFocus++; addActive(items); } 
@@ -199,31 +225,50 @@
             for (let i = 0; i < items.length; i++) items[i].classList.remove("selected");
         }
 
+        // C. LIVE TYPING
         searchInput.addEventListener('input', function() {
             document.getElementById('tmdb_id').value = ''; 
             document.getElementById('media_type').value = '';
+            
             clearTimeout(debounceTimer);
             const query = this.value;
-            if (query.length < 2) { autocompleteList.innerHTML = ''; return; }
+            
+            // Pass the current Region to backend for better suggestions
+            const currentRegion = regionSelect ? regionSelect.value : 'IN';
+
+            if (query.length < 2) { 
+                autocompleteList.innerHTML = ''; 
+                return; 
+            }
 
             debounceTimer = setTimeout(() => {
-                fetch(`/api/autocomplete?q=${encodeURIComponent(query)}`)
+                fetch(`/api/autocomplete?q=${encodeURIComponent(query)}&region=${currentRegion}`)
                     .then(response => response.json())
                     .then(data => {
                         autocompleteList.innerHTML = '';
                         currentFocus = -1;
+
                         data.forEach(item => {
                             const div = document.createElement('div');
                             div.className = 'autocomplete-item';
                             const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
-                            div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span><strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span></span>${typeBadge}</div>`;
+                            
+                            div.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                    <span><strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span></span>
+                                    ${typeBadge}
+                                </div>
+                            `;
+                            
                             div.addEventListener('click', function() {
                                 searchInput.value = item.title;
                                 document.getElementById('tmdb_id').value = item.tmdb_id;
                                 document.getElementById('media_type').value = item.media_type;
-                                autocompleteList.innerHTML = '';
-                                searchForm.submit(); 
+                                
+                                // === CALL SMOOTH SUBMIT ===
+                                smoothSubmit();
                             });
+                            
                             autocompleteList.appendChild(div);
                         });
                     });
