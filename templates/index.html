@@ -7,55 +7,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* === FOOTER STYLING === */
-        .footer {
-            margin-top: auto;
-            padding: 40px 20px;
-            text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .footer-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .main-tagline {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary, #fff);
-            margin: 0;
-            min-height: 24px;
-            transition: opacity 0.5s ease;
-        }
-
-        .attribution {
-            font-size: 0.8rem;
-            color: var(--text-secondary, rgba(255, 255, 255, 0.5));
-            font-weight: 300;
-            letter-spacing: 0.5px;
-        }
-
-        .attribution .brand {
-            color: var(--text-primary, #fff);
-            font-weight: 600;
-            opacity: 0.8;
-        }
-
-        .heart {
-            display: inline-block;
-            color: #e50914;
-            animation: heartbeat 1.5s infinite ease-in-out;
-        }
-
-        @keyframes heartbeat {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
+        .footer { margin-top: auto; padding: 40px 20px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.2); }
+        .footer-container { display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; }
+        .main-tagline { font-size: 1.1rem; font-weight: 600; color: var(--text-primary, #fff); margin: 0; min-height: 24px; transition: opacity 0.5s ease; }
+        .attribution { font-size: 0.8rem; color: var(--text-secondary, rgba(255, 255, 255, 0.5)); font-weight: 300; letter-spacing: 0.5px; }
+        .attribution .brand { color: var(--text-primary, #fff); font-weight: 600; opacity: 0.8; }
+        .heart { display: inline-block; color: #e50914; animation: heartbeat 1.5s infinite ease-in-out; }
+        @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
     </style>
 </head>
 <body>
@@ -66,22 +24,16 @@
 </div>
 
 <header class="nav">
-    <a href="/" class="logo">
-        <span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span>
-    </a>
+    <a href="/" class="logo"><span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span></a>
     <div class="nav-right">
-        <div class="nav-toolbar">
-            <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
-        </div>
+        <div class="nav-toolbar"><button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button></div>
     </div>
 </header>
 
 <div class="hero-bg">
     <div class="hero">
         <h1>Turn your <span>Letterboxd</span><br>lists into <span>Weekend Plans</span>.</h1>
-        <p style="color:var(--muted); max-width:500px; margin:0 auto; line-height:1.6;">
-            Check where your favorite movies and shows are streaming across 50+ platforms instantly.
-        </p>
+        <p style="color:var(--muted); max-width:500px; margin:0 auto; line-height:1.6;">Check where your favorite movies and shows are streaming across 50+ platforms instantly.</p>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -135,71 +87,36 @@
             <button type="submit">Upload & Check</button>
         </form>
 
-        <small class="availability-note">
-            💡 <strong>Tip:</strong> Export your watchlist from Letterboxd (Settings > Import & Export) or search for individual titles to get started.
-        </small>
+        <small class="availability-note">💡 <strong>Tip:</strong> Export your watchlist from Letterboxd (Settings > Import & Export) or search for individual titles to get started.</small>
     </div>
 </div>
 
 <footer class="footer">
     <div class="footer-container">
-        <p id="home-tagline" class="main-tagline">
-            Made with <span class="heart">❤️</span> for Cinema
-        </p>
-        
-        <div class="attribution">
-            <span class="brand">BoxdStream</span> • Powered by TMDB
-        </div>
+        <p id="home-tagline" class="main-tagline">Made with <span class="heart">❤️</span> for Cinema</p>
+        <div class="attribution"><span class="brand">BoxdStream</span> • Powered by TMDB</div>
     </div>
 </footer>
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-    // === 1. DYNAMIC TAGLINE ROTATOR ===
+    // === TAGLINE & LOADING LOGIC ===
     document.addEventListener("DOMContentLoaded", function() {
-        const taglines = [
-            "Made with <span class='heart'>❤️</span> for Cinema.",
-            "Because life is too short for bad buffers. 🍿",
-            "Turning 'One day' into 'Today'. 🎬",
-            "Every movie has a home. We just find it. 🏠",
-            "From our watchlist to yours. 💌",
-            "Cinema is a language we all speak. 🌍",
-            "Less searching, more watching. 🍿",
-            "Curated for the cinephile in you. ⭐",
-            "Clearing watchlists, one stream at a time. ✅",
-            "Built by fans, for the fans. <span class='heart'>❤️</span>",
-            "The magic of movies, just a click away. ✨",
-            "Your watchlist called. It wants to be watched. 📞"
-        ];
-
+        const taglines = ["Made with <span class='heart'>❤️</span> for Cinema.", "Because life is too short for bad buffers. 🍿", "Turning 'One day' into 'Today'. 🎬", "Every movie has a home. We just find it. 🏠", "From our watchlist to yours. 💌", "Cinema is a language we all speak. 🌍", "Less searching, more watching. 🍿", "Curated for the cinephile in you. ⭐", "Clearing watchlists, one stream at a time. ✅", "Built by fans, for the fans. <span class='heart'>❤️</span>", "The magic of movies, just a click away. ✨", "Your watchlist called. It wants to be watched. 📞"];
         const taglineElement = document.getElementById('home-tagline');
-        
         function changeTagline() {
-            taglineElement.style.opacity = 0; // Fade out
+            taglineElement.style.opacity = 0; 
             setTimeout(() => {
                 const index = Math.floor(Math.random() * taglines.length);
                 taglineElement.innerHTML = taglines[index];
-                taglineElement.style.opacity = 1; // Fade in
+                taglineElement.style.opacity = 1; 
             }, 500);
         }
-
-        // Change every 5 seconds
         setInterval(changeTagline, 5000);
     });
 
-    // === 2. LOADING MESSAGES LOGIC ===
-    const weekdayMessages = {
-        morning: ["Brewing your morning coffee...", "Finding a movie to go with breakfast...", "Starting the day with some cinema...", "Waking up the streaming servers...", "Loading... (Don't forget your coffee)"],
-        evening: ["Skipping work to watch movies? Nice.", "Finding the perfect lunch break watch...", "Procrastinating like a pro...", "Beat the evening rush...", "Scanning 50+ platforms..."],
-        night: ["Sleep is for the weak. Movies are forever.", "Popcorn is popping... buttering the data...", "Revenge bedtime procrastination loading...", "Checking if it's too scary for 2 AM...", "Turning off the lights... loading the show..."]
-    };
-
-    const weekendMessages = {
-        morning: ["Weekend rule #1: Movies in bed are mandatory.", "No alarm clock? Time for a morning marathon.", "It's the weekend. You're allowed to start watching at 10 AM.", "Brewing extra strong coffee for the weekend watch..."],
-        evening: ["Saturday night plans: Me, my couch, and this movie.", "Ordering pizza... Scanning for a blockbuster...", "Canceling social plans to stream this. Worth it.", "Weekend mode: ON. Work mode: DELETED."],
-        night: ["No work tomorrow! One more movie won't hurt.", "Is it 2 AM? Who cares, it's the weekend.", "Late night binge session initiating...", "The night is young (and so is your watchlist)."]
-    };
-
+    const weekdayMessages = { morning: ["Brewing your morning coffee...", "Finding a movie to go with breakfast...", "Loading... (Don't forget your coffee)"], evening: ["Skipping work to watch movies? Nice.", "Finding the perfect lunch break watch...", "Scanning 50+ platforms..."], night: ["Sleep is for the weak. Movies are forever.", "Popcorn is popping... buttering the data...", "Checking if it's too scary for 2 AM..."] };
+    const weekendMessages = { morning: ["Weekend rule #1: Movies in bed are mandatory.", "It's the weekend. You're allowed to start watching at 10 AM."], evening: ["Saturday night plans: Me, my couch, and this movie.", "Ordering pizza... Scanning for a blockbuster..."], night: ["No work tomorrow! One more movie won't hurt.", "Late night binge session initiating..."] };
     const regionTimezones = { 'IN': 'Asia/Kolkata', 'US': 'America/New_York', 'GB': 'Europe/London', 'CA': 'America/Toronto', 'AU': 'Australia/Sydney', 'BR': 'America/Sao_Paulo', 'FR': 'Europe/Paris', 'DE': 'Europe/Berlin' };
 
     function startLoadingText() {
@@ -209,18 +126,14 @@
         const regionSelect = activeForm ? activeForm.querySelector('select[name="region_code"]') : null;
         const selectedRegion = regionSelect ? regionSelect.value : 'IN';
         const timeZone = regionTimezones[selectedRegion] || 'UTC';
-        
         const date = new Date();
         const hourFormatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timeZone });
         const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timeZone });
-
         const hour = parseInt(hourFormatter.format(date));
         const day = dayFormatter.format(date);
         const isWeekend = (day === 'Sat' || day === 'Sun');
-        
         const messageSource = isWeekend ? weekendMessages : weekdayMessages;
         let selectedMessages = (hour >= 5 && hour < 12) ? messageSource.morning : (hour >= 12 && hour < 20) ? messageSource.evening : messageSource.night;
-
         let i = 0;
         textElement.textContent = selectedMessages[0];
         if (window.loadingInterval) clearInterval(window.loadingInterval);
@@ -238,43 +151,79 @@
         });
     });
 
-    // === 3. AUTOCOMPLETE LOGIC (Calls Backend) ===
+    // === AUTOCOMPLETE & ENTER KEY LOGIC ===
     const searchInput = document.getElementById('movie-search');
     const autocompleteList = document.getElementById('autocomplete-list');
+    const searchForm = document.getElementById('search-form'); 
     let debounceTimer;
+    let currentFocus = -1; 
+
+    // GLOBAL ENTER LISTENER
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            const activeElement = document.activeElement;
+            const isDropdownOpen = autocompleteList.innerHTML.trim() !== "";
+            // If dropdown open & item selected -> Click it
+            if (isDropdownOpen && currentFocus > -1) {
+                e.preventDefault();
+                const items = autocompleteList.getElementsByClassName("autocomplete-item");
+                if (items[currentFocus]) items[currentFocus].click();
+            } 
+            // Else -> Submit Search
+            else if (searchInput.value.trim().length > 0) {
+                if (!activeElement.tagName.match(/TEXTAREA|SELECT/) && activeElement !== document.querySelector('input[type="file"]')) {
+                    autocompleteList.innerHTML = ''; 
+                    searchForm.submit();
+                }
+            }
+        }
+    });
 
     if (searchInput) {
+        searchInput.addEventListener("keydown", function(e) {
+            let items = autocompleteList.getElementsByClassName("autocomplete-item");
+            if (e.key === "ArrowDown") { currentFocus++; addActive(items); } 
+            else if (e.key === "ArrowUp") { currentFocus--; addActive(items); }
+        });
+
+        function addActive(items) {
+            if (!items) return false;
+            removeActive(items);
+            if (currentFocus >= items.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = (items.length - 1);
+            items[currentFocus].classList.add("selected");
+            items[currentFocus].scrollIntoView({ block: 'nearest' });
+        }
+
+        function removeActive(items) {
+            for (let i = 0; i < items.length; i++) items[i].classList.remove("selected");
+        }
+
         searchInput.addEventListener('input', function() {
             document.getElementById('tmdb_id').value = ''; 
             document.getElementById('media_type').value = '';
-            
             clearTimeout(debounceTimer);
             const query = this.value;
-            
-            if (query.length < 2) { 
-                autocompleteList.innerHTML = ''; 
-                return; 
-            }
+            if (query.length < 2) { autocompleteList.innerHTML = ''; return; }
 
             debounceTimer = setTimeout(() => {
                 fetch(`/api/autocomplete?q=${encodeURIComponent(query)}`)
                     .then(response => response.json())
                     .then(data => {
                         autocompleteList.innerHTML = '';
-                        // No filtering needed here, backend sends top 7 sorted results
+                        currentFocus = -1;
                         data.forEach(item => {
                             const div = document.createElement('div');
                             div.className = 'autocomplete-item';
                             const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
-                            div.innerHTML = `<strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span> ${typeBadge}`;
-                            
+                            div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span><strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span></span>${typeBadge}</div>`;
                             div.addEventListener('click', function() {
                                 searchInput.value = item.title;
                                 document.getElementById('tmdb_id').value = item.tmdb_id;
                                 document.getElementById('media_type').value = item.media_type;
                                 autocompleteList.innerHTML = '';
+                                searchForm.submit(); 
                             });
-                            
                             autocompleteList.appendChild(div);
                         });
                     });
@@ -282,7 +231,7 @@
         });
         
         document.addEventListener('click', function(e) {
-            if (e.target !== searchInput) { autocompleteList.innerHTML = ''; }
+            if (e.target !== searchInput && e.target !== autocompleteList) { autocompleteList.innerHTML = ''; }
         });
     }
 </script>

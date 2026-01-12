@@ -5,14 +5,9 @@ from urllib3.util.retry import Retry
 import concurrent.futures
 import csv
 import io
-import time
 from datetime import datetime
 from difflib import SequenceMatcher
 import urllib.parse 
-
-# === IMPORT THE SEARCH ENGINE ===
-# Ensure search_engine.py is in the same folder
-from searchengine import engine
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_for_flash_messages'
@@ -62,14 +57,11 @@ CUSTOM_METADATA = {
     }
 }
 
-# === 3. DIRECT LINK GENERATOR ===
+# === 3. HELPER FUNCTIONS ===
 def get_direct_link(provider_name, movie_title):
     q = urllib.parse.quote(movie_title)
     p = provider_name.lower()
-
-    if any(x in p for x in ["jio", "hotstar", "disney", "jiostar"]): 
-        return f"https://www.hotstar.com/in/search?q={q}"
-
+    if any(x in p for x in ["jio", "hotstar", "disney", "jiostar"]): return f"https://www.hotstar.com/in/search?q={q}"
     if "netflix" in p: return f"https://www.netflix.com/search?q={q}"
     if "prime" in p or "amazon" in p: return f"https://www.primevideo.com/search/ref=atv_nb_sr?phrase={q}"
     if "apple" in p: return f"https://tv.apple.com/search?term={q}"
@@ -77,48 +69,7 @@ def get_direct_link(provider_name, movie_title):
     if "sonyliv" in p: return f"https://www.sonyliv.com/search?q={q}"
     if "aha" in p: return f"https://www.aha.video/search?q={q}"
     if "sun nxt" in p: return f"https://www.sunnxt.com/search?q={q}"
-    if "youtube" in p or "google" in p: return f"https://www.youtube.com/results?search_query={q}"
-    
     return f"https://www.google.com/search?q={q}+{urllib.parse.quote(provider_name)}"
-
-# === CORE FUNCTIONS ===
-
-def calculate_similarity(a, b):
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-def find_best_match(results, user_query, target_year=None):
-    if not results: return None
-    candidates = results[:15]
-    best_candidate = None
-    best_score = -1
-
-    for item in candidates:
-        title = item.get('title') or item.get('name') or ""
-        release_date = item.get('release_date') or item.get('first_air_date') or ""
-        popularity = item.get('popularity', 0)
-        
-        sim_score = calculate_similarity(user_query, title)
-        
-        year_score = 0
-        if target_year and release_date:
-            try:
-                item_year = int(release_date.split('-')[0])
-                target = int(target_year)
-                if abs(item_year - target) <= 1:
-                    year_score = 0.5 
-            except: pass
-
-        exact_boost = 0
-        if title.lower().strip() == user_query.lower().strip():
-            exact_boost = 0.3
-
-        final_score = (sim_score * 100) + (year_score * 100) + (exact_boost * 100) + (popularity * 0.02)
-        
-        if final_score > best_score:
-            best_score = final_score
-            best_candidate = item
-            
-    return best_candidate
 
 def get_providers(tmdb_id, media_type, region):
     url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}/watch/providers?api_key={TMDB_API_KEY}"
@@ -132,18 +83,56 @@ def get_providers(tmdb_id, media_type, region):
     return None
 
 def get_collection_parts(collection_id):
-    """Fetches all movies in a franchise collection"""
     url = f"https://api.themoviedb.org/3/collection/{collection_id}?api_key={TMDB_API_KEY}"
     try:
         resp = session.get(url).json()
         parts = resp.get('parts', [])
         parts.sort(key=lambda x: x.get('release_date', '9999-99-99') or '9999-99-99')
         return parts
-    except:
-        return []
+    except: return []
 
+# === 4. THE GOOGLE-STYLE SORTING ALGORITHM ===
+def smart_sort(results, user_query):
+    """
+    Sorts results so the 'Real' movie comes first.
+    Prioritizes: Exact Match > Indian Content > High Vote Count > Popularity
+    """
+    scored_results = []
+    user_query = user_query.lower().strip()
+
+    for item in results:
+        # 1. Base Score (Vote Count)
+        # Classics like Indra (2002) have way more votes than junk data
+        vote_score = item.get('vote_count', 0)
+        
+        # 2. Indian Content Boost (The "Yogi" Fix)
+        # If language is Telugu/Hindi/Tamil, give it a HUGE boost
+        lang = item.get('original_language', 'en')
+        lang_boost = 0
+        if lang in ['te', 'hi', 'ta', 'ml', 'kn']: 
+            lang_boost = 5000 # Massive boost for Indian films
+        
+        # 3. Exact Title Match Boost
+        title = item.get('title') or item.get('name') or ""
+        match_boost = 0
+        if title.lower().strip() == user_query:
+            match_boost = 2000
+            
+        # 4. Popularity (Tie breaker)
+        pop_score = item.get('popularity', 0)
+
+        # Final Score Calculation
+        final_score = vote_score + lang_boost + match_boost + pop_score
+        
+        item['smart_score'] = final_score
+        scored_results.append(item)
+
+    # Sort High to Low
+    scored_results.sort(key=lambda x: x['smart_score'], reverse=True)
+    return scored_results
+
+# === 5. MAIN PROCESSING ===
 def process_single_search(query, region, tmdb_id=None, media_type="movie", year=None):
-    
     clean_query = query.strip().lower()
     if clean_query in SEARCH_ALIASES:
         final_query = SEARCH_ALIASES[clean_query]
@@ -152,41 +141,46 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
 
     movies_to_process = []
 
-    # --- 1. FIND CONTENT (INTEGRATED SEARCH ENGINE) ---
+    # --- IF SEARCHING BY NAME (Logic Upgrade) ---
     if not tmdb_id:
-        ranked_results = engine.search(final_query)
+        url = "https://api.themoviedb.org/3/search/multi"
+        params = {"api_key": TMDB_API_KEY, "query": final_query, "include_adult": "false", "page": 1}
         
-        if ranked_results:
-            # OPTIMIZATION: If Year is provided, pick the best match
-            if year:
-                first_hit = find_best_match(ranked_results, final_query, target_year=year) or ranked_results[0]
-            else:
-                first_hit = ranked_results[0]
+        try:
+            resp = session.get(url, params=params).json()
+            raw_results = [r for r in resp.get('results', []) if r.get('media_type') in ['movie', 'tv']]
             
-            # Check for Franchise
-            m_type = first_hit.get('media_type', 'movie')
-            
-            if m_type == 'movie':
-                details_url = f"https://api.themoviedb.org/3/movie/{first_hit['id']}?api_key={TMDB_API_KEY}"
-                try:
+            if raw_results:
+                # APPLY SMART SORT HERE
+                sorted_results = smart_sort(raw_results, final_query)
+                
+                # Pick the top winner
+                first_hit = sorted_results[0]
+                
+                # Franchise Check
+                m_type = first_hit.get('media_type', 'movie')
+                if m_type == 'movie':
+                    details_url = f"https://api.themoviedb.org/3/movie/{first_hit['id']}?api_key={TMDB_API_KEY}"
                     details = session.get(details_url).json()
                     collection = details.get('belongs_to_collection')
-                    
                     if collection:
                         parts = get_collection_parts(collection['id'])
                         for p in parts: p['media_type'] = 'movie' 
                         movies_to_process = parts
                     else:
                         movies_to_process = [first_hit]
-                except:
+                else:
                     movies_to_process = [first_hit]
             else:
-                movies_to_process = [first_hit]
-        else:
+                 return [{
+                    'title': query, 'year': "Unknown", 'poster': None, 'providers': [],
+                    'status': "Not Found", 'ui_class': "not-found", 'justwatch_link': "#"
+                }]
+        except:
              return [{
-                'title': query, 'year': year if year else "Unknown", 'poster': None, 'providers': [],
-                'status': "Not Found", 'ui_class': "not-found", 'justwatch_link': "#"
-            }]
+                    'title': query, 'year': "Error", 'poster': None, 'providers': [],
+                    'status': "Error", 'ui_class': "not-found", 'justwatch_link': "#"
+                }]
     else:
         # ID provided case
         details_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}"
@@ -196,9 +190,8 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
             movies_to_process = [first_hit]
         except: pass
 
-    # --- PROCESS LIST ---
+    # --- PROCESS FINAL LIST ---
     final_results = []
-    
     for item in movies_to_process:
         m_id = item['id']
         m_type = item.get('media_type', 'movie')
@@ -206,48 +199,37 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
         m_date = item.get('release_date') or item.get('first_air_date') or "N/A"
         m_poster = item.get('poster_path')
         
-        # Poster logic
-        if m_title in CUSTOM_METADATA and not m_poster:
-            poster_url = CUSTOM_METADATA[m_title]['poster']
-        else:
-            poster_url = f"https://image.tmdb.org/t/p/w500{m_poster}" if m_poster else "https://via.placeholder.com/500x750?text=No+Poster"
+        # Poster
+        poster_url = f"https://image.tmdb.org/t/p/w500{m_poster}" if m_poster else "https://via.placeholder.com/500x750?text=No+Poster"
+        if m_title in CUSTOM_METADATA and not m_poster: poster_url = CUSTOM_METADATA[m_title]['poster']
 
-        # Providers logic
+        # Providers
         providers = get_providers(m_id, m_type, region)
         processed_providers = []
         if providers:
             def add_provider(p_data, label):
                 link = get_direct_link(p_data['provider_name'], m_title)
-                return {
-                    'name': p_data['provider_name'],
-                    'logo': f"https://image.tmdb.org/t/p/w92{p_data['logo_path']}",
-                    'label': label,
-                    'link': link
-                }
-            if 'flatrate' in providers:
+                return {'name': p_data['provider_name'], 'logo': f"https://image.tmdb.org/t/p/w92{p_data['logo_path']}", 'label': label, 'link': link}
+            if 'flatrate' in providers: 
                 for p in providers['flatrate']: processed_providers.append(add_provider(p, 'Subscription'))
-            if 'rent' in providers:
+            if 'rent' in providers: 
                 for p in providers['rent']: processed_providers.append(add_provider(p, 'Rent'))
-            if 'buy' in providers:
-                for p in providers['buy']:
-                    if not any(x['name'] == p['provider_name'] for x in processed_providers):
-                        processed_providers.append(add_provider(p, 'Buy'))
+            if 'buy' in providers: 
+                for p in providers['buy']: 
+                    if not any(x['name'] == p['provider_name'] for x in processed_providers): processed_providers.append(add_provider(p, 'Buy'))
 
-        # Status Logic
+        # Status
         status = "Not Streaming"
         ui_class = "released-unknown"
-
         if processed_providers:
             status = "Streaming"
             ui_class = "streaming"
         else:
             is_future = False
-            if not m_date or m_date == "N/A" or m_date == "":
-                is_future = True
+            if not m_date or m_date == "N/A": is_future = True
             else:
-                try:
-                    rel_date = datetime.strptime(m_date, "%Y-%m-%d")
-                    if rel_date > datetime.now(): is_future = True
+                try: 
+                    if datetime.strptime(m_date, "%Y-%m-%d") > datetime.now(): is_future = True
                 except: pass
             
             if is_future:
@@ -279,24 +261,20 @@ def index():
         if mode == 'search':
             title = request.form.get('title')
             tmdb_id = request.form.get('tmdb_id')
-            media_type = request.form.get('media_type') 
-            
+            media_type = request.form.get('media_type')
             results = process_single_search(title, region, tmdb_id, media_type)
             
             if not results or results[0]['status'] == "Not Found":
                 flash(f"Could not find results for '{title}'.", "error")
                 return redirect(url_for('index'))
-                
             return render_template('results.html', results=results, region=region, summary={})
 
         elif mode == 'csv':
             if 'file' not in request.files: return redirect(url_for('index'))
             file = request.files['file']
-            
             try:
                 stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
                 csv_input = csv.DictReader(stream)
-                
                 tasks = []
                 for row in csv_input:
                     name = row.get('Name') or row.get('Title')
@@ -305,22 +283,17 @@ def index():
                 
                 results = []
                 with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                    future_to_task = {
-                        executor.submit(process_single_search, t['name'], region, None, None, t['year']): t 
-                        for t in tasks
-                    }
+                    future_to_task = {executor.submit(process_single_search, t['name'], region, None, None, t['year']): t for t in tasks}
                     for future in concurrent.futures.as_completed(future_to_task):
                         try:
                             data_list = future.result()
-                            if data_list: 
-                                results.extend(data_list)
+                            if data_list: results.extend(data_list)
                         except: pass
 
                 def sort_key(x):
                     if x['status'] == 'Streaming': return 0
                     if x['status'] == 'Coming Soon': return 1
                     return 2
-                
                 unique_results = {v['title']+v['year']:v for v in results}.values()
                 results = list(unique_results)
                 results.sort(key=sort_key)
@@ -332,43 +305,33 @@ def index():
                     'unreleased': sum(1 for r in results if r['status'] == 'Coming Soon' or r['status'] == 'Not Found')
                 }
                 return render_template('results.html', results=results, region=region, summary=summary)
-
             except Exception as e:
                 flash(f"CSV Error: {str(e)}", "error")
                 return redirect(url_for('index'))
 
     return render_template('index.html')
 
-# === NEW: BACKEND AUTOCOMPLETE ROUTE ===
+# === 6. AUTOCOMPLETE ROUTE (Same Smart Logic) ===
 @app.route('/api/autocomplete')
 def autocomplete():
     query = request.args.get('q', '').strip().lower()
     if not query: return []
 
-    # 1. APPLY ALIASES (Fixes "OG" -> "They Call Him OG")
     final_query = query
-    if query in SEARCH_ALIASES:
-        final_query = SEARCH_ALIASES[query]
+    if query in SEARCH_ALIASES: final_query = SEARCH_ALIASES[query]
 
-    # 2. CALL TMDB
     url = "https://api.themoviedb.org/3/search/multi"
-    params = {
-        "api_key": TMDB_API_KEY,
-        "query": final_query,
-        "include_adult": "false",
-        "language": "en-US",
-        "page": 1
-    }
+    params = {"api_key": TMDB_API_KEY, "query": final_query, "include_adult": "false", "language": "en-US", "page": 1}
     
     try:
         resp = session.get(url, params=params).json()
-        results = resp.get('results', [])
+        raw_results = [r for r in resp.get('results', []) if r.get('media_type') in ['movie', 'tv']]
+        
+        # APPLY THE SAME SMART SORT
+        sorted_results = smart_sort(raw_results, final_query)
         
         clean_results = []
-        for item in results:
-            media_type = item.get('media_type')
-            if media_type not in ['movie', 'tv']: continue
-            
+        for item in sorted_results[:10]: # Return top 10 Sorted
             title = item.get('title') or item.get('name')
             date = item.get('release_date') or item.get('first_air_date') or ""
             year = date.split('-')[0] if date else ""
@@ -377,18 +340,11 @@ def autocomplete():
                 "title": title,
                 "year": year,
                 "tmdb_id": item['id'],
-                "media_type": media_type,
-                "popularity": item.get('popularity', 0)
+                "media_type": item['media_type'],
+                "score": item['smart_score'] # For debugging
             })
-
-        # 3. SORT BY POPULARITY (Fixes "Fast and Furious" junk results)
-        clean_results.sort(key=lambda x: x['popularity'], reverse=True)
-        
-        return clean_results[:7]
-        
-    except Exception as e:
-        print(f"Autocomplete Error: {e}")
-        return []
+        return clean_results
+    except: return []
 
 if __name__ == '__main__':
     app.run(debug=True)
