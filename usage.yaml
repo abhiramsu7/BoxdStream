@@ -1,0 +1,44 @@
+
+---
+
+## 🛠 Tech Stack
+
+**Backend**
+- Python
+- Flask / FastAPI
+- Requests / BeautifulSoup
+- SQLite / PostgreSQL (optional)
+
+**Frontend**
+- HTML / CSS / JavaScript
+- Minimal UI-first approach
+
+**Data**
+- Scraping-based ingestion
+- Title normalization
+- Region-specific availability
+
+**DevOps**
+- Docker (planned)
+- GitHub Actions (planned)
+
+---
+
+## 📊 Data Sources
+
+- OTT platform public listings
+- Search-based availability inference
+- Theater listing platforms
+- Manual validation for edge cases
+
+> Note: No official OTT APIs are publicly available. This project uses ethical scraping with rate limiting.
+
+---
+
+## ⚙️ Installation & Setup
+
+```bash
+git clone https://github.com/abhiramsu7/boxdstream-ott-tracker.git
+cd boxdstream-ott-tracker
+pip install -r requirements.txt
+python backend/main.py

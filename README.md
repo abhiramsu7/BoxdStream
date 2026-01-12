@@ -1,19 +1,44 @@
-# 🎬 BoxdStream
+# BoxdStream 🎬
 
-**Turn your Letterboxd lists into Weekend Plans.**
+**BoxdStream** is a data-driven OTT availability tracking platform that bridges **Letterboxd watchlists** with **real-time streaming availability** across platforms in India.
 
-BoxdStream is a Flask-based web application that solves the "Streaming Chaos" problem. It takes movie/TV titles and instantly identifies which streaming service (Netflix, Prime, Hotstar, etc.) holds the rights in your specific region.
+The project solves OTT fragmentation by telling users **where**, **how**, and **under what subscription** a movie can be watched — all in one place.
 
-🔗 **Live Demo:** [https://boxdstream-2.onrender.com/]
+---
 
-## 🚀 Features
-* **Real-Time Availability:** Fetches live streaming data for 20+ regions using the TMDB API.
-* **Smart Search:** Includes a custom autocomplete engine with debounce logic to reduce API calls.
-* **Batch Processing:** Uses Python `ThreadPoolExecutor` to process huge watchlists (50+ movies) in seconds concurrently.
-* **Responsive UI:** Mobile-first design with Dark/Light mode and Service Filtering.
+## 🔍 Problem Statement
 
-## 🛠️ Tech Stack
-* **Backend:** Python, Flask, Gunicorn
-* **Frontend:** HTML5, CSS3 (Variables/Flexbox), JavaScript (Vanilla)
-* **API:** TMDB (The Movie Database)
-* **Deployment:** Render (CI/CD pipeline via GitHub)
+Modern viewers maintain watchlists on platforms like Letterboxd, but discovering **where a movie is available to stream** remains fragmented across multiple OTT platforms.
+
+Key challenges:
+- No unified availability source
+- Region-specific OTT catalogs
+- Rapidly changing streaming rights
+- Subscription vs rent/buy ambiguity
+
+---
+
+## 💡 Solution
+
+BoxdStream aggregates streaming availability data across OTT platforms and maps it to Letterboxd watchlists, providing:
+
+- Platform availability
+- Subscription / Rent / Buy status
+- Region-specific results (India-first)
+- Theater vs OTT distinction
+
+---
+
+## 🚀 Key Features
+
+- Letterboxd watchlist ingestion
+- OTT availability detection
+- Subscription vs rental classification
+- Region-aware filtering
+- Clean, minimal UI
+- API-first backend architecture
+
+---
+
+## 🧠 System Architecture
+
