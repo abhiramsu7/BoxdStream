@@ -7,11 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .footer { margin-top: auto; padding: 40px 20px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.2); }
-        .footer-container { display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; }
-        .main-tagline { font-size: 1.1rem; font-weight: 600; color: var(--text-primary, #fff); margin: 0; min-height: 24px; transition: opacity 0.5s ease; }
-        .attribution { font-size: 0.8rem; color: var(--text-secondary, rgba(255, 255, 255, 0.5)); font-weight: 300; letter-spacing: 0.5px; }
-        .attribution .brand { color: var(--text-primary, #fff); font-weight: 600; opacity: 0.8; }
         .heart { display: inline-block; color: #e50914; animation: heartbeat 1.5s infinite ease-in-out; }
         @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
     </style>
@@ -24,16 +19,22 @@
 </div>
 
 <header class="nav">
-    <a href="/" class="logo"><span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span></a>
+    <a href="/" class="logo">
+        <span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span>
+    </a>
     <div class="nav-right">
-        <div class="nav-toolbar"><button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button></div>
+        <div class="nav-toolbar">
+            <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+        </div>
     </div>
 </header>
 
 <div class="hero-bg">
     <div class="hero">
         <h1>Turn your <span>Letterboxd</span><br>lists into <span>Weekend Plans</span>.</h1>
-        <p style="color:var(--muted); max-width:500px; margin:0 auto; line-height:1.6;">Check where your favorite movies and shows are streaming across 50+ platforms instantly.</p>
+        <p style="color:var(--muted); max-width:500px; margin:0 auto; line-height:1.6;">
+            Check where your favorite movies and shows are streaming across 50+ platforms instantly.
+        </p>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -87,22 +88,41 @@
             <button type="submit">Upload & Check</button>
         </form>
 
-        <small class="availability-note">💡 <strong>Tip:</strong> Export your watchlist from Letterboxd (Settings > Import & Export) or search for individual titles to get started.</small>
+        <small class="availability-note">
+            💡 <strong>Tip:</strong> Export your watchlist from Letterboxd (Settings > Import & Export) or search for individual titles to get started.
+        </small>
     </div>
 </div>
 
 <footer class="footer">
     <div class="footer-container">
-        <p id="home-tagline" class="main-tagline">Made with <span class="heart">❤️</span> for Cinema</p>
-        <div class="attribution"><span class="brand">BoxdStream</span> • Powered by TMDB</div>
+        <p id="home-tagline" class="main-tagline">
+            Made with <span class="heart">❤️</span> for Cinema
+        </p>
+        <div class="attribution">
+            <span class="brand">BoxdStream</span> • Powered by TMDB
+        </div>
     </div>
 </footer>
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-    // === 1. TAGLINE & LOADING TEXT LOGIC (Keep existing) ===
+    // === 1. TAGLINE & LOADING LOGIC ===
     document.addEventListener("DOMContentLoaded", function() {
-        const taglines = [ "Made with <span class='heart'>❤️</span> for Cinema.", "Because life is too short for bad buffers. 🍿", "Turning 'One day' into 'Today'. 🎬", "Every movie has a home. We just find it. 🏠", "From our watchlist to yours. 💌", "Cinema is a language we all speak. 🌍", "Less searching, more watching. 🍿", "Curated for the cinephile in you. ⭐", "Clearing watchlists, one stream at a time. ✅", "Built by fans, for the fans. <span class='heart'>❤️</span>", "The magic of movies, just a click away. ✨", "Your watchlist called. It wants to be watched. 📞"];
+        const taglines = [
+            "Made with <span class='heart'>❤️</span> for Cinema.",
+            "Because life is too short for bad buffers. 🍿",
+            "Turning 'One day' into 'Today'. 🎬",
+            "Every movie has a home. We just find it. 🏠",
+            "From our watchlist to yours. 💌",
+            "Cinema is a language we all speak. 🌍",
+            "Less searching, more watching. 🍿",
+            "Curated for the cinephile in you. ⭐",
+            "Clearing watchlists, one stream at a time. ✅",
+            "Built by fans, for the fans. <span class='heart'>❤️</span>",
+            "The magic of movies, just a click away. ✨",
+            "Your watchlist called. It wants to be watched. 📞"
+        ];
         const taglineElement = document.getElementById('home-tagline');
         function changeTagline() {
             taglineElement.style.opacity = 0; 
@@ -144,59 +164,50 @@
         }, 2000); 
     }
 
-    // === 2. SMOOTH SUBMIT FUNCTION (The Delay Fix) ===
+    // === 2. SMOOTH SUBMIT FUNCTION (1.5s Delay) ===
     function smoothSubmit() {
         const loader = document.getElementById('loader');
         const autocompleteList = document.getElementById('autocomplete-list');
         const searchForm = document.getElementById('search-form');
 
-        // 1. Hide dropdown immediately
         if(autocompleteList) {
             autocompleteList.innerHTML = '';
             autocompleteList.classList.remove('active');
         }
 
-        // 2. Show Loader & Start Text
         if(loader) loader.classList.remove('hidden');
         startLoadingText();
 
-        // 3. WAIT 1.5 SECONDS -> Then Submit
         setTimeout(() => {
             searchForm.submit();
-        }, 1500); 
+        }, 1200); 
     }
 
-    // Intercept default form submit button
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function(e) {
-            e.preventDefault(); // Stop instant submit
-            smoothSubmit();     // Use smooth submit
+            e.preventDefault(); 
+            smoothSubmit(); 
         });
     });
 
     // === 3. AUTOCOMPLETE & ENTER KEY LOGIC ===
     const searchInput = document.getElementById('movie-search');
     const autocompleteList = document.getElementById('autocomplete-list');
+    const searchForm = document.getElementById('search-form'); 
     const regionSelect = document.getElementById('region-select-search'); 
     let debounceTimer;
     let currentFocus = -1; 
 
     if (searchInput) {
-        
-        // A. GLOBAL ENTER KEY LISTENER
         document.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 const activeElement = document.activeElement;
                 const isDropdownOpen = autocompleteList.innerHTML.trim() !== "";
-
-                // Case 1: Dropdown open + Item selected -> Click it
                 if (isDropdownOpen && currentFocus > -1) {
                     e.preventDefault();
                     const items = autocompleteList.getElementsByClassName("autocomplete-item");
                     if (items[currentFocus]) items[currentFocus].click();
-                } 
-                // Case 2: Just hit Enter -> Smooth Submit
-                else if (searchInput.value.trim().length > 0) {
+                } else if (searchInput.value.trim().length > 0) {
                     if (!activeElement.tagName.match(/TEXTAREA|SELECT/) && activeElement !== document.querySelector('input[type="file"]')) {
                         e.preventDefault(); 
                         smoothSubmit(); 
@@ -205,7 +216,6 @@
             }
         });
 
-        // B. ARROW NAVIGATION
         searchInput.addEventListener("keydown", function(e) {
             let items = autocompleteList.getElementsByClassName("autocomplete-item");
             if (e.key === "ArrowDown") { currentFocus++; addActive(items); } 
@@ -225,19 +235,17 @@
             for (let i = 0; i < items.length; i++) items[i].classList.remove("selected");
         }
 
-        // C. LIVE TYPING
+        // TOOLTIP INJECTION LOGIC
         searchInput.addEventListener('input', function() {
             document.getElementById('tmdb_id').value = ''; 
             document.getElementById('media_type').value = '';
-            
             clearTimeout(debounceTimer);
             const query = this.value;
-            
-            // Pass the current Region to backend for better suggestions
             const currentRegion = regionSelect ? regionSelect.value : 'IN';
 
             if (query.length < 2) { 
                 autocompleteList.innerHTML = ''; 
+                autocompleteList.classList.remove('active');
                 return; 
             }
 
@@ -247,16 +255,23 @@
                     .then(data => {
                         autocompleteList.innerHTML = '';
                         currentFocus = -1;
+                        if(data.length > 0) autocompleteList.classList.add('active');
+                        else autocompleteList.classList.remove('active');
 
                         data.forEach(item => {
                             const div = document.createElement('div');
                             div.className = 'autocomplete-item';
                             const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
                             
+                            // INJECT HTML WITH TOOLTIP
                             div.innerHTML = `
                                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                                     <span><strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span></span>
                                     ${typeBadge}
+                                </div>
+                                <div class="suggestion-tooltip">
+                                    <strong>Synopsis:</strong><br>
+                                    ${item.overview}
                                 </div>
                             `;
                             
@@ -264,9 +279,7 @@
                                 searchInput.value = item.title;
                                 document.getElementById('tmdb_id').value = item.tmdb_id;
                                 document.getElementById('media_type').value = item.media_type;
-                                
-                                // === CALL SMOOTH SUBMIT ===
-                                smoothSubmit();
+                                smoothSubmit(); 
                             });
                             
                             autocompleteList.appendChild(div);
@@ -276,7 +289,10 @@
         });
         
         document.addEventListener('click', function(e) {
-            if (e.target !== searchInput && e.target !== autocompleteList) { autocompleteList.innerHTML = ''; }
+            if (e.target !== searchInput && e.target !== autocompleteList) { 
+                autocompleteList.innerHTML = ''; 
+                autocompleteList.classList.remove('active');
+            }
         });
     }
 </script>

@@ -7,70 +7,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* === NEW: CLOSURE BANNER (Top of Page) === */
-        .closure-banner {
-            text-align: center;
-            padding: 30px 20px 10px; /* Spacing above summary */
-            animation: fadeIn 0.8s ease-out;
-        }
-
-        .closure-text {
-            font-size: 1.4rem; /* Prominent size */
-            font-weight: 700;
-            color: var(--text-primary, #e0e0e0);
-            letter-spacing: -0.5px;
-            margin: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Heart Animation */
-        .heart {
-            display: inline-block;
-            color: #e50914;
-            animation: heartbeat 1.5s infinite ease-in-out;
-        }
-
-        @keyframes heartbeat {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
-
-        /* === FOOTER (Minimal) === */
-        .footer {
-            margin-top: 60px;
-            padding: 30px 20px;
-            text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .attribution {
-            font-size: 0.8rem;
-            color: var(--text-secondary, rgba(255, 255, 255, 0.4));
-            font-weight: 400;
-            letter-spacing: 0.5px;
-        }
-
-        .attribution span {
-            font-weight: 700;
-            color: var(--text-primary, #fff);
-            opacity: 0.8;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .closure-banner { text-align: center; padding: 30px 20px 10px; animation: fadeIn 0.8s ease-out; }
+        .closure-text { font-size: 1.4rem; font-weight: 700; color: var(--text-primary, #e0e0e0); letter-spacing: -0.5px; margin: 0; display: inline-flex; align-items: center; gap: 8px; }
+        .heart { display: inline-block; color: #e50914; animation: heartbeat 1.5s infinite ease-in-out; }
+        @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        .footer { margin-top: 60px; padding: 30px 20px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.05); background: rgba(0, 0, 0, 0.2); }
+        .attribution { font-size: 0.8rem; color: var(--text-secondary, rgba(255, 255, 255, 0.4)); font-weight: 400; letter-spacing: 0.5px; }
+        .attribution span { font-weight: 700; color: var(--text-primary, #fff); opacity: 0.8; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
 <header class="nav">
-    <a href="/" class="logo">
-        <span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span>
-    </a>
+    <a href="/" class="logo"><span class="logo-boxd">Boxd</span><span class="logo-stream">Stream</span></a>
     <div class="nav-right">
         <div class="nav-toolbar">
             <a href="/" class="icon-btn" title="New Search / Back">←</a>
@@ -81,43 +31,34 @@
 </header>
 
 <div class="closure-banner">
-    <p class="closure-text">
-        Watchlists deserve closure <span class="heart">❤️</span>
-    </p>
+    <p class="closure-text">Watchlists deserve closure <span class="heart">❤️</span></p>
 </div>
 
 <section class="summary">
-    <div onclick="filterMovies('free', null)" style="cursor:pointer" title="Click to see Free movies">
-        <strong>{{ summary.available_free }}</strong><span>Free to Watch</span>
-    </div>
-    <div onclick="filterMovies('Rent', null)" style="cursor:pointer" title="Click to see Rent/Buy movies">
-        <strong>{{ summary.rent_or_buy }}</strong><span>Rent / Buy</span>
-    </div>
-    <div onclick="filterMovies('unavailable', null)" style="cursor:pointer" title="Click to see Not Streaming movies">
-        <strong>{{ summary.not_streaming }}</strong><span>Not Streaming</span>
-    </div>
-    <div onclick="filterMovies('unreleased', null)" style="cursor:pointer" title="Click to see Coming Soon">
-        <strong>{{ summary.unreleased }}</strong><span>Coming Soon</span>
-    </div>
+    <div onclick="filterMovies('free', null)" style="cursor:pointer"><strong>{{ summary.available_free }}</strong><span>Free to Watch</span></div>
+    <div onclick="filterMovies('Rent', null)" style="cursor:pointer"><strong>{{ summary.rent_or_buy }}</strong><span>Rent / Buy</span></div>
+    <div onclick="filterMovies('unavailable', null)" style="cursor:pointer"><strong>{{ summary.not_streaming }}</strong><span>Not Streaming</span></div>
+    <div onclick="filterMovies('unreleased', null)" style="cursor:pointer"><strong>{{ summary.unreleased }}</strong><span>Coming Soon</span></div>
 </section>
 
 <div class="filter-bar-container">
     <div class="filter-bar">
         <button class="filter-btn active" onclick="filterMovies('all', this)">All</button>
-        <button class="filter-btn" onclick="filterMovies('Netflix', this)">Netflix</button>
-        <button class="filter-btn" onclick="filterMovies('Prime', this)">Prime Video</button>
-        <button class="filter-btn" onclick="filterMovies('Apple', this)">Apple TV</button>
+        
+        {% if 'netflix' in active_providers %} <button class="filter-btn" onclick="filterMovies('Netflix', this)">Netflix</button> {% endif %}
+        {% if 'prime' in active_providers %} <button class="filter-btn" onclick="filterMovies('Prime', this)">Prime Video</button> {% endif %}
+        {% if 'apple' in active_providers %} <button class="filter-btn" onclick="filterMovies('Apple', this)">Apple TV</button> {% endif %}
 
         {% if region == 'IN' %}
-            <button class="filter-btn" onclick="filterMovies('JioHotstar', this)">JioHotstar</button>
-            <button class="filter-btn" onclick="filterMovies('Zee5', this)">ZEE5</button>
-            <button class="filter-btn" onclick="filterMovies('Sony', this)">SonyLIV</button>
-            <button class="filter-btn" onclick="filterMovies('Aha', this)">Aha</button>
+            {% if 'hotstar' in active_providers %} <button class="filter-btn" onclick="filterMovies('JioHotstar', this)">JioHotstar</button> {% endif %}
+            {% if 'zee5' in active_providers %} <button class="filter-btn" onclick="filterMovies('Zee5', this)">ZEE5</button> {% endif %}
+            {% if 'sony' in active_providers %} <button class="filter-btn" onclick="filterMovies('Sony', this)">SonyLIV</button> {% endif %}
+            {% if 'aha' in active_providers %} <button class="filter-btn" onclick="filterMovies('Aha', this)">Aha</button> {% endif %}
         {% endif %}
         
         {% if region != 'IN' %}
-            <button class="filter-btn" onclick="filterMovies('Disney', this)">Disney+</button>
-            <button class="filter-btn" onclick="filterMovies('Hulu', this)">Hulu</button>
+            {% if 'disney' in active_providers %} <button class="filter-btn" onclick="filterMovies('Disney', this)">Disney+</button> {% endif %}
+            {% if 'hulu' in active_providers %} <button class="filter-btn" onclick="filterMovies('Hulu', this)">Hulu</button> {% endif %}
         {% endif %}
 
         <button class="filter-btn" onclick="filterMovies('Rent', this)">Rent/Buy</button>
@@ -170,9 +111,7 @@
 </div>
 
 <footer class="footer">
-    <div class="attribution">
-        <span>BoxdStream</span> • Powered by TMDB
-    </div>
+    <div class="attribution"><span>BoxdStream</span> • Powered by TMDB</div>
 </footer>
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
