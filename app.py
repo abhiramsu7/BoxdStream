@@ -97,31 +97,23 @@ def smart_sort(results, user_query):
     user_query = user_query.lower().strip()
 
     for item in results:
-        # 1. Vote Count
         vote_score = item.get('vote_count', 0)
-        
-        # 2. Indian Content Boost
         lang = item.get('original_language', 'en')
         lang_boost = 0
         if lang in ['te', 'hi', 'ta', 'ml', 'kn']: 
             lang_boost = 5000 
         
-        # 3. Exact Title Match
         title = item.get('title') or item.get('name') or ""
         match_boost = 0
         if title.lower().strip() == user_query:
             match_boost = 2000
             
-        # 4. Popularity
         pop_score = item.get('popularity', 0)
-        
-        # Final Score
         final_score = (vote_score * 2) + lang_boost + match_boost + pop_score
         
         item['smart_score'] = final_score
         scored_results.append(item)
 
-    # Sort High to Low
     scored_results.sort(key=lambda x: x['smart_score'], reverse=True)
     return scored_results
 
@@ -148,7 +140,7 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
                 sorted_results = smart_sort(raw_results, final_query)
                 first_hit = sorted_results[0]
                 
-                # Check for Franchise ONLY if expand_collection is TRUE
+                # Check for Franchise ONLY if expand_collection is TRUE (Search Mode)
                 m_type = first_hit.get('media_type', 'movie')
                 
                 if m_type == 'movie' and expand_collection:
@@ -176,7 +168,7 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
             first_hit = session.get(details_url).json()
             if 'media_type' not in first_hit: first_hit['media_type'] = media_type
             
-            # Expand Collection on Direct ID Search (Optional, usually False for direct click)
+            # Logic: If user clicked a suggestion, check if we should expand (only if needed)
             if media_type == 'movie' and expand_collection:
                  collection = first_hit.get('belongs_to_collection')
                  if collection:
@@ -216,17 +208,28 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
                 for p in providers['buy']: 
                     if not any(x['name'] == p['provider_name'] for x in processed_providers): processed_providers.append(add_provider(p, 'Buy'))
 
+        # === NEW STATUS LOGIC: IN THEATERS ===
         status = "Not Streaming"
         ui_class = "released-unknown"
+        
         if processed_providers:
             status = "Streaming"
             ui_class = "streaming"
         else:
             is_future = False
-            if not m_date or m_date == "N/A": is_future = True
+            days_since_release = -1 # Default
+            
+            if not m_date or m_date == "N/A": 
+                is_future = True
             else:
                 try: 
-                    if datetime.strptime(m_date, "%Y-%m-%d") > datetime.now(): is_future = True
+                    release_obj = datetime.strptime(m_date, "%Y-%m-%d")
+                    now = datetime.now()
+                    if release_obj > now: 
+                        is_future = True
+                    else:
+                        # Calculate days passed since release
+                        days_since_release = (now - release_obj).days
                 except: pass
             
             if is_future:
@@ -234,8 +237,13 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
                 ui_class = "unreleased"
                 if not m_date or m_date == "N/A": m_date = "TBA"
             else:
-                status = "Not Streaming" 
-                ui_class = "not-streaming" 
+                # If released within last 90 days and NO providers -> In Theaters
+                if 0 <= days_since_release <= 90:
+                    status = "In Theaters"
+                    ui_class = "theatrical"
+                else:
+                    status = "Not Streaming" 
+                    ui_class = "not-streaming" 
 
         final_results.append({
             'title': m_title,
@@ -287,20 +295,13 @@ def index():
         elif mode == 'csv':
             if 'file' not in request.files: return redirect(url_for('index'))
             file = request.files['file']
-            
-            # === FIXED: ROBUST CSV ENCODING HANDLING ===
             try:
-                # Read raw bytes first
                 file_bytes = file.stream.read()
-                
-                # Try UTF-8 first (Standard)
                 try:
                     text_data = file_bytes.decode('utf-8')
                 except UnicodeDecodeError:
-                    # Fallback to Latin-1 (Common in Excel)
                     text_data = file_bytes.decode('iso-8859-1')
 
-                # Create stream from the decoded text
                 stream = io.StringIO(text_data, newline=None)
                 csv_input = csv.DictReader(stream)
                 
@@ -325,8 +326,9 @@ def index():
 
                 def sort_key(x):
                     if x['status'] == 'Streaming': return 0
-                    if x['status'] == 'Coming Soon': return 1
-                    return 2
+                    if x['status'] == 'In Theaters': return 1 # Priority 2
+                    if x['status'] == 'Coming Soon': return 2
+                    return 3
                 unique_results = {v['title']+v['year']:v for v in results}.values()
                 results = list(unique_results)
                 results.sort(key=sort_key)
@@ -348,6 +350,7 @@ def index():
                 summary = {
                     'available_free': sum(1 for r in results if any(p['label'] == 'Subscription' for p in r['providers'])),
                     'rent_or_buy': sum(1 for r in results if any(p['label'] in ['Rent', 'Buy'] for p in r['providers'])),
+                    'in_theaters': sum(1 for r in results if r['status'] == 'In Theaters'),
                     'not_streaming': sum(1 for r in results if r['status'] == 'Not Streaming'),
                     'unreleased': sum(1 for r in results if r['status'] == 'Coming Soon' or r['status'] == 'Not Found')
                 }
@@ -367,7 +370,6 @@ def autocomplete():
     final_query = query
     if query in SEARCH_ALIASES: final_query = SEARCH_ALIASES[query]
 
-    # Simplified Fetch: 1 Page to avoid Timeout/Errors
     url = "https://api.themoviedb.org/3/search/multi"
     params = {
         "api_key": TMDB_API_KEY,
@@ -381,7 +383,6 @@ def autocomplete():
         resp = session.get(url, params=params).json()
         raw_results = [r for r in resp.get('results', []) if r.get('media_type') in ['movie', 'tv']]
         
-        # Apply Smart Sort
         sorted_results = smart_sort(raw_results, final_query)
         
         clean_results = []
@@ -389,7 +390,6 @@ def autocomplete():
             title = item.get('title') or item.get('name')
             date = item.get('release_date') or item.get('first_air_date') or ""
             year = date.split('-')[0] if date else ""
-            
             overview = item.get('overview', 'No detailed info available.')
             if len(overview) > 120: overview = overview[:120] + "..."
 

@@ -7,14 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .closure-banner { text-align: center; padding: 30px 20px 10px; animation: fadeIn 0.8s ease-out; }
-        .closure-text { font-size: 1.4rem; font-weight: 700; color: var(--text-primary, #e0e0e0); letter-spacing: -0.5px; margin: 0; display: inline-flex; align-items: center; gap: 8px; }
         .heart { display: inline-block; color: #e50914; animation: heartbeat 1.5s infinite ease-in-out; }
         @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
-        .footer { margin-top: 60px; padding: 30px 20px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.05); background: rgba(0, 0, 0, 0.2); }
-        .attribution { font-size: 0.8rem; color: var(--text-secondary, rgba(255, 255, 255, 0.4)); font-weight: 400; letter-spacing: 0.5px; }
-        .attribution span { font-weight: 700; color: var(--text-primary, #fff); opacity: 0.8; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Extra style for Theatrical Badge in summary */
+        .summary-theatrical strong { color: #f59e0b !important; }
+        .summary-theatrical:hover { border-color: #f59e0b !important; }
     </style>
 </head>
 <body>
@@ -37,6 +34,9 @@
 <section class="summary">
     <div onclick="filterMovies('free', null)" style="cursor:pointer"><strong>{{ summary.available_free }}</strong><span>Free to Watch</span></div>
     <div onclick="filterMovies('Rent', null)" style="cursor:pointer"><strong>{{ summary.rent_or_buy }}</strong><span>Rent / Buy</span></div>
+    
+    <div onclick="filterMovies('theatrical', null)" class="summary-theatrical" style="cursor:pointer"><strong>{{ summary.in_theaters }}</strong><span>In Theaters</span></div>
+    
     <div onclick="filterMovies('unavailable', null)" style="cursor:pointer"><strong>{{ summary.not_streaming }}</strong><span>Not Streaming</span></div>
     <div onclick="filterMovies('unreleased', null)" style="cursor:pointer"><strong>{{ summary.unreleased }}</strong><span>Coming Soon</span></div>
 </section>
@@ -96,7 +96,10 @@
                 {% endfor %}
                 </div>
             {% else %}
-                <span class="static-status">{{ movie.status }}</span>
+                <span class="static-status" 
+                      style="color: {% if movie.status == 'In Theaters' %}#f59e0b{% elif movie.status == 'Coming Soon' %}#22c55e{% else %}#9aa0b4{% endif %}; font-weight:700; font-size:0.9rem;">
+                    {{ movie.status }}
+                </span>
             {% endif %}
         </div>
     </div>
@@ -129,6 +132,7 @@
         'rent': { emoji: "💳", title: "Wallet Safe.", desc: "Nothing to rent or buy here." },
         'unreleased': { emoji: "📅", title: "All Released!", desc: "Every movie in your list has already hit the screens." },
         'unavailable': { emoji: "🎉", title: "Everything is Streaming!", desc: "Great news! All your movies are available somewhere." },
+        'theatrical': { emoji: "🍿", title: "Grab Popcorn!", desc: "These movies are exclusively in theaters right now." },
         'default': { emoji: "👻", title: "It's a ghost town here.", desc: "None of your watchlist movies match this filter." }
     };
 
@@ -157,6 +161,9 @@
                 if (cardStatus === 'Not Streaming' || cardStatus === 'Not Found') showCard = true;
             } else if (filter === 'unreleased') {
                 if (cardStatus === 'Coming Soon') showCard = true;
+            } else if (filter === 'theatrical') {
+                // NEW: Handle In Theaters
+                if (cardStatus === 'In Theaters') showCard = true;
             } else {
                 let hasProviderMatch = false;
                 badges.forEach(badge => {
