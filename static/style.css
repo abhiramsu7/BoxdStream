@@ -355,7 +355,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  position: relative; /* Added for Tooltip */
+  position: relative; /* Added for Tooltip positioning */
 }
 
 .autocomplete-item:last-child {
@@ -465,6 +465,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   color: var(--muted);
 }
 
+/* === SUMMARY (RESTORED TO FLEXBOX) === */
 .summary {
   display: flex;
   justify-content: center;
@@ -511,18 +512,18 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   font-weight: 600;
 }
 
-/* === MODIFIED GRID & CARDS (COMPACT MODE) === */
+/* === MODIFIED: COMPACT GRID & CARDS === */
 .grid {
   padding: 20px 48px 80px;
   display: grid;
-  /* MODIFIED: Smaller min-width (200px) and Tighter Gap (16px) */
+  /* CHANGED: Smaller min-width (200px) and Tighter Gap (16px) */
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
 }
 
 .card {
   background: var(--surface);
-  /* MODIFIED: Reduced Padding from 18px to 12px */
+  /* CHANGED: Reduced Padding from 18px to 12px */
   padding: 12px;
   border-radius: 12px; /* Slightly tighter radius */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -557,7 +558,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   border: 2px dashed rgba(124, 124, 255, .3);
 }
 
-/* MODIFIED: Smaller Text */
+/* MODIFIED: Smaller Text for Compact Cards */
 .card h3 {
   margin: 0 0 4px 0;
   font-size: 0.95rem; /* Smaller font */
@@ -570,7 +571,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   margin-bottom: 8px;
 }
 
-/* === COMPACT PROVIDER ICONS === */
+/* === MODIFIED: COMPACT PROVIDER ICONS === */
 .card-status {
   min-height: 40px;
   display: flex;
@@ -586,7 +587,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 
 .provider-icon {
   position: relative;
-  /* MODIFIED: Smaller Icons (36px instead of 45px) */
+  /* CHANGED: Smaller Icons (36px instead of 45px) */
   width: 36px;
   height: 36px;
   border-radius: 8px;

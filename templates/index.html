@@ -53,8 +53,8 @@
 
         <form class="hero-form" id="search-form" action="/" method="POST">
             <input type="hidden" name="mode" value="search">
-            <div style="position:relative; flex:1; min-width:250px;">
-                <input type="text" name="title" class="search-input" placeholder="Search for a movie or TV show..." required autocomplete="off" id="movie-search">
+            <div style="position:relative; flex:2; min-width:280px;">
+                <input type="text" name="title" class="search-input" placeholder="Search for a movie or TV show..." required autocomplete="off" id="movie-search" style="width:100%">
                 <div id="autocomplete-list" class="autocomplete-dropdown"></div>
             </div>
             <input type="hidden" name="tmdb_id" id="tmdb_id">
@@ -164,11 +164,10 @@
         }, 2000); 
     }
 
-    // === 2. SMOOTH SUBMIT FUNCTION (1.5s Delay) ===
-    function smoothSubmit() {
+    // === 2. SMOOTH SUBMIT FUNCTION (FIXED) ===
+    function smoothSubmit(targetForm) {
         const loader = document.getElementById('loader');
         const autocompleteList = document.getElementById('autocomplete-list');
-        const searchForm = document.getElementById('search-form');
 
         if(autocompleteList) {
             autocompleteList.innerHTML = '';
@@ -179,14 +178,16 @@
         startLoadingText();
 
         setTimeout(() => {
-            searchForm.submit();
+            // FIX: Submit the actual form that was used
+            if (targetForm) targetForm.submit();
         }, 1200); 
     }
 
+    // LISTENER FOR ALL FORMS (Search & CSV)
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault(); 
-            smoothSubmit(); 
+            smoothSubmit(this); // Pass 'this' (the form being submitted)
         });
     });
 
@@ -199,6 +200,7 @@
     let currentFocus = -1; 
 
     if (searchInput) {
+        // GLOBAL ENTER KEY
         document.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 const activeElement = document.activeElement;
@@ -210,12 +212,13 @@
                 } else if (searchInput.value.trim().length > 0) {
                     if (!activeElement.tagName.match(/TEXTAREA|SELECT/) && activeElement !== document.querySelector('input[type="file"]')) {
                         e.preventDefault(); 
-                        smoothSubmit(); 
+                        smoothSubmit(searchForm); 
                     }
                 }
             }
         });
 
+        // ARROW KEYS
         searchInput.addEventListener("keydown", function(e) {
             let items = autocompleteList.getElementsByClassName("autocomplete-item");
             if (e.key === "ArrowDown") { currentFocus++; addActive(items); } 
@@ -279,7 +282,7 @@
                                 searchInput.value = item.title;
                                 document.getElementById('tmdb_id').value = item.tmdb_id;
                                 document.getElementById('media_type').value = item.media_type;
-                                smoothSubmit(); 
+                                smoothSubmit(searchForm); 
                             });
                             
                             autocompleteList.appendChild(div);
