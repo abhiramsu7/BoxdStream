@@ -8,6 +8,7 @@ import io
 from datetime import datetime
 from difflib import SequenceMatcher
 import urllib.parse 
+import re # Added for Regex cleaning
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_for_flash_messages'
@@ -57,9 +58,19 @@ CUSTOM_METADATA = {
     }
 }
 
-# === 3. HELPER FUNCTIONS ===
+# === 3. HELPER FUNCTIONS (UPDATED SMART LINK) ===
 def get_direct_link(provider_name, movie_title):
-    q = urllib.parse.quote(movie_title)
+    # === SMART CLEANING LOGIC ===
+    # 1. If title has a colon (e.g., "Salaar: Part 1"), take only the first part ("Salaar")
+    # This ensures "Avengers: Endgame" searches for "Avengers", which always finds the movie.
+    clean_title = movie_title.split(':')[0].strip()
+    
+    # 2. Remove special characters that confuse search algorithms (like em-dash, brackets)
+    # This turns "Mission: Impossible - Fallout" into "Mission" (safe)
+    clean_title = re.sub(r'[\(\)\-\–]', '', clean_title).strip()
+
+    q = urllib.parse.quote(clean_title)
+    
     p = provider_name.lower()
     if any(x in p for x in ["jio", "hotstar", "disney", "jiostar"]): return f"https://www.hotstar.com/in/search?q={q}"
     if "netflix" in p: return f"https://www.netflix.com/search?q={q}"
@@ -72,7 +83,7 @@ def get_direct_link(provider_name, movie_title):
     return f"https://www.google.com/search?q={q}+{urllib.parse.quote(provider_name)}"
 
 def get_providers(tmdb_id, media_type, region):
-    # Modified to include credits and videos in one API call
+    # Includes credits and videos
     url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}&append_to_response=watch/providers,credits,videos"
     try:
         response = session.get(url, timeout=5)
@@ -140,11 +151,9 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
                 m_type = first_hit.get('media_type', 'movie')
                 
                 if m_type == 'movie' and expand_collection:
-                    # Quick fetch to check collection status
                     details_url = f"https://api.themoviedb.org/3/movie/{first_hit['id']}?api_key={TMDB_API_KEY}"
                     details = session.get(details_url).json()
                     collection = details.get('belongs_to_collection')
-                    
                     if collection:
                         parts = get_collection_parts(collection['id'])
                         for p in parts: p['media_type'] = 'movie' 
@@ -158,11 +167,8 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
         except:
              return [{ 'title': query, 'year': "Error", 'poster': None, 'providers': [], 'status': "Error", 'ui_class': "not-found", 'justwatch_link': "#" }]
     else:
-        # ID provided
-        # Note: We need minimal info here, the detailed fetch happens below
         try:
             temp_hit = {'id': tmdb_id, 'media_type': media_type}
-            
             if media_type == 'movie' and expand_collection:
                  details_url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={TMDB_API_KEY}"
                  details = session.get(details_url).json()
@@ -182,9 +188,7 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
         m_id = item['id']
         m_type = item.get('media_type', 'movie')
         
-        # === NEW: Fetch Details + Providers + Credits + Videos in ONE call ===
         full_data = get_providers(m_id, m_type, region)
-        
         if not full_data: continue
 
         m_title = full_data.get('title') or full_data.get('name')
@@ -195,7 +199,6 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
         poster_url = f"https://image.tmdb.org/t/p/w500{m_poster}" if m_poster else "https://via.placeholder.com/500x750?text=No+Poster"
         if m_title in CUSTOM_METADATA and not m_poster: poster_url = CUSTOM_METADATA[m_title]['poster']
 
-        # Extract Providers
         providers_data = full_data.get('watch/providers', {}).get('results', {}).get(region, {})
         processed_providers = []
         
@@ -211,13 +214,11 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
             for p in providers_data['buy']: 
                 if not any(x['name'] == p['provider_name'] for x in processed_providers): processed_providers.append(add_provider(p, 'Buy'))
 
-        # === Extract Cast & Crew ===
         credits = full_data.get('credits', {})
-        cast = [c['name'] for c in credits.get('cast', [])[:4]] # Top 4 Actors
+        cast = [c['name'] for c in credits.get('cast', [])[:4]]
         crew = credits.get('crew', [])
         director = next((c['name'] for c in crew if c['job'] == 'Director'), "Unknown")
         
-        # === Extract Trailer ===
         videos = full_data.get('videos', {}).get('results', [])
         trailer_key = None
         for v in videos:
@@ -225,7 +226,6 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
                 trailer_key = v['key']
                 break
         
-        # Status Logic
         status = "Not Streaming"
         ui_class = "released-unknown"
         
@@ -267,7 +267,7 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
             'overview': m_overview,
             'cast': ", ".join(cast),
             'director': director,
-            'trailer': trailer_key, # YouTube Key
+            'trailer': trailer_key,
             'justwatch_link': f"https://www.justwatch.com/{region.lower()}/search?q={m_title}"
         })
 
@@ -371,7 +371,6 @@ def index():
 
     return render_template('index.html')
 
-# === 7. AUTOCOMPLETE ROUTE ===
 @app.route('/api/autocomplete')
 def autocomplete():
     query = request.args.get('q', '').strip().lower()
