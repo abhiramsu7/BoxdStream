@@ -8,7 +8,7 @@ import io
 from datetime import datetime
 from difflib import SequenceMatcher
 import urllib.parse 
-import re # Added for Regex cleaning
+import re 
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_for_flash_messages'
@@ -58,17 +58,10 @@ CUSTOM_METADATA = {
     }
 }
 
-# === 3. HELPER FUNCTIONS (UPDATED SMART LINK) ===
+# === 3. HELPER FUNCTIONS ===
 def get_direct_link(provider_name, movie_title):
-    # === SMART CLEANING LOGIC ===
-    # 1. If title has a colon (e.g., "Salaar: Part 1"), take only the first part ("Salaar")
-    # This ensures "Avengers: Endgame" searches for "Avengers", which always finds the movie.
     clean_title = movie_title.split(':')[0].strip()
-    
-    # 2. Remove special characters that confuse search algorithms (like em-dash, brackets)
-    # This turns "Mission: Impossible - Fallout" into "Mission" (safe)
     clean_title = re.sub(r'[\(\)\-\–]', '', clean_title).strip()
-
     q = urllib.parse.quote(clean_title)
     
     p = provider_name.lower()
@@ -83,8 +76,9 @@ def get_direct_link(provider_name, movie_title):
     return f"https://www.google.com/search?q={q}+{urllib.parse.quote(provider_name)}"
 
 def get_providers(tmdb_id, media_type, region):
-    # Includes credits and videos
-    url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}&append_to_response=watch/providers,credits,videos"
+    # === FIXED: ADDED 'include_video_language' ===
+    # This forces TMDB to check Telugu (te), Hindi (hi), Tamil (ta), etc. for trailers
+    url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}&append_to_response=watch/providers,credits,videos&include_video_language=en,te,hi,ta,ml,kn"
     try:
         response = session.get(url, timeout=5)
         if response.status_code == 200:
@@ -219,12 +213,21 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
         crew = credits.get('crew', [])
         director = next((c['name'] for c in crew if c['job'] == 'Director'), "Unknown")
         
+        # === SMART VIDEO SELECTION ===
         videos = full_data.get('videos', {}).get('results', [])
+        final_video_key = None
         trailer_key = None
+        teaser_key = None
+        
         for v in videos:
-            if v['site'] == 'YouTube' and v['type'] == 'Trailer':
-                trailer_key = v['key']
-                break
+            if v['site'] == 'YouTube':
+                if v['type'] == 'Trailer':
+                    trailer_key = v['key']
+                    break
+                elif v['type'] == 'Teaser':
+                    teaser_key = v['key']
+        
+        final_video_key = trailer_key if trailer_key else teaser_key
         
         status = "Not Streaming"
         ui_class = "released-unknown"
@@ -267,7 +270,7 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
             'overview': m_overview,
             'cast': ", ".join(cast),
             'director': director,
-            'trailer': trailer_key,
+            'trailer': final_video_key,
             'justwatch_link': f"https://www.justwatch.com/{region.lower()}/search?q={m_title}"
         })
 

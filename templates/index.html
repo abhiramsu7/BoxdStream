@@ -11,7 +11,7 @@
         @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
     </style>
 </head>
-<body>
+<body class="home-body">
 
 <div id="loader" class="loader hidden">
     <div class="spinner"></div>
@@ -178,7 +178,6 @@
         startLoadingText();
 
         setTimeout(() => {
-            // FIX: Submit the actual form that was used
             if (targetForm) targetForm.submit();
         }, 1200); 
     }
@@ -187,7 +186,7 @@
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault(); 
-            smoothSubmit(this); // Pass 'this' (the form being submitted)
+            smoothSubmit(this); 
         });
     });
 
