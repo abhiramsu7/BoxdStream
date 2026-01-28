@@ -9,6 +9,7 @@
     <style>
         .heart { display: inline-block; color: #e50914; animation: heartbeat 1.5s infinite ease-in-out; }
         @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        /* Extra style for Theatrical Badge in summary */
         .summary-theatrical strong { color: #f59e0b !important; }
         .summary-theatrical:hover { border-color: #f59e0b !important; }
         .card { cursor: pointer; } 
@@ -253,7 +254,7 @@
         let visibleCount = 0;
         
         cards.forEach(card => {
-            // FIXED: Target only visible icons in the status bar, ignore hidden data
+            // FIXED: Only target the VISIBLE badges in the card-status
             const badges = card.querySelectorAll('.card-status .provider-icon');
             const cardStatus = card.getAttribute('data-specific-status');
             let showCard = false;
@@ -277,8 +278,7 @@
                 badges.forEach(badge => {
                     const name = badge.getAttribute('data-name');
                     const label = badge.getAttribute('data-label');
-                    // Safety check to prevent crash if attributes are missing
-                    if (!name || !label) return; 
+                    if (!name || !label) return; // Skip if missing attrs
 
                     const nameLower = name.toLowerCase();
                     const labelLower = label.toLowerCase();
