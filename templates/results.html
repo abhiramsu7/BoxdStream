@@ -9,7 +9,6 @@
     <style>
         .heart { display: inline-block; color: #e50914; animation: heartbeat 1.5s infinite ease-in-out; }
         @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
-        /* Extra style for Theatrical Badge in summary */
         .summary-theatrical strong { color: #f59e0b !important; }
         .summary-theatrical:hover { border-color: #f59e0b !important; }
         .card { cursor: pointer; } 
@@ -77,7 +76,6 @@
             <span class="data-type">{{ movie.type }}</span>
             <span class="data-seasons">{{ movie.seasons }}</span>
             <span class="data-lastep">{{ movie.last_ep }}</span>
-            
             <div class="data-providers">
                 {% if movie.providers %}
                     {% for p in movie.providers %}
@@ -175,16 +173,11 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-    // === NEW: AUTO-OPEN MODAL LOGIC ===
     document.addEventListener("DOMContentLoaded", function() {
         const cards = document.querySelectorAll('.card');
-        // Only auto-open if exactly 1 result AND it's not empty/hidden
-        if (cards.length === 1) {
-            openModal(cards[0]);
-        }
+        if (cards.length === 1) { openModal(cards[0]); }
     });
 
-    // === MODAL LOGIC ===
     const modal = document.getElementById('movie-modal');
     const iframe = document.getElementById('modal-iframe');
     const vidContainer = document.getElementById('modal-video-container');
@@ -194,7 +187,6 @@
 
     function openModal(card) {
         const data = card.querySelector('.hidden-data');
-        
         document.getElementById('modal-title').textContent = data.querySelector('.data-title').textContent;
         document.getElementById('modal-year').textContent = data.querySelector('.data-year').textContent;
         document.getElementById('modal-desc').textContent = data.querySelector('.data-overview').textContent;
@@ -202,7 +194,6 @@
         document.getElementById('modal-cast-list').textContent = data.querySelector('.data-cast').textContent;
         document.getElementById('modal-providers-list').innerHTML = data.querySelector('.data-providers').innerHTML;
 
-        // TV Logic
         const type = data.querySelector('.data-type').textContent;
         if (type === 'tv') {
             tvDetails.style.display = 'block';
@@ -213,7 +204,6 @@
         }
 
         const trailerKey = data.querySelector('.data-trailer').textContent;
-        
         if (trailerKey && trailerKey !== 'None') {
             iframe.src = `https://www.youtube.com/embed/${trailerKey}?autoplay=1`;
             vidContainer.style.display = 'block';
@@ -224,7 +214,6 @@
             vidContainer.style.display = 'none';
             ytLinkContainer.style.display = 'none';
         }
-
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
@@ -235,15 +224,9 @@
         document.body.style.overflow = '';
     }
 
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
-    });
-
-    // === FILTER LOGIC ===
     const emptyMessages = {
         'netflix': { emoji: "📺", title: "Tudum... Silence.", desc: "Are you still watching? Because we couldn't find any matches here." },
         'prime': { emoji: "📦", title: "Delivery Delayed.", desc: "Even Prime One-Day delivery couldn't find these movies." },
@@ -270,7 +253,8 @@
         let visibleCount = 0;
         
         cards.forEach(card => {
-            const badges = card.querySelectorAll('.provider-icon');
+            // FIXED: Target only visible icons in the status bar, ignore hidden data
+            const badges = card.querySelectorAll('.card-status .provider-icon');
             const cardStatus = card.getAttribute('data-specific-status');
             let showCard = false;
 
@@ -291,14 +275,19 @@
             } else {
                 let hasProviderMatch = false;
                 badges.forEach(badge => {
-                    const name = badge.getAttribute('data-name').toLowerCase();
-                    const label = badge.getAttribute('data-label').toLowerCase();
+                    const name = badge.getAttribute('data-name');
+                    const label = badge.getAttribute('data-label');
+                    // Safety check to prevent crash if attributes are missing
+                    if (!name || !label) return; 
+
+                    const nameLower = name.toLowerCase();
+                    const labelLower = label.toLowerCase();
                     const filterLower = filter.toLowerCase();
                     let isMatch = false;
                     
-                    if (filter === 'JioHotstar') { if (name.includes('jio') || name.includes('hotstar') || name.includes('disney')) isMatch = true; }
-                    else if (filter === 'Rent') { if (label.includes('rent') || label.includes('buy')) isMatch = true; }
-                    else { if (name.includes(filterLower)) isMatch = true; }
+                    if (filter === 'JioHotstar') { if (nameLower.includes('jio') || nameLower.includes('hotstar') || nameLower.includes('disney')) isMatch = true; }
+                    else if (filter === 'Rent') { if (labelLower.includes('rent') || labelLower.includes('buy')) isMatch = true; }
+                    else { if (nameLower.includes(filterLower)) isMatch = true; }
 
                     if (isMatch) { badge.style.display = 'block'; hasProviderMatch = true; } 
                     else { badge.style.display = 'none'; }

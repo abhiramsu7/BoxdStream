@@ -176,7 +176,7 @@ body {
   align-items: center;
   text-align: center;
   position: relative;
-  /* Removed forced padding, flexbox handles spacing now */
+  padding-bottom: 40px; 
 }
 
 .hero-bg::before {
@@ -195,7 +195,6 @@ body {
   font-size: clamp(2.6rem, 5vw, 4rem);
   line-height: 1.2;
   margin-bottom: 16px;
-  /* Ensure header doesn't get too close to top */
   margin-top: 40px; 
 }
 
@@ -248,7 +247,7 @@ body {
   max-width: 700px;
   width: 100%;
   position: relative;
-  margin-left: 40px; 
+  margin-left: 0; 
 }
 
 .hero-form input[type="file"] { flex: 1; min-width: 250px; }
@@ -330,9 +329,10 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 
 /* === FIXED TIP SECTION (Uniform Spacing) === */
 .availability-note {
-  /* Added significant spacing to separate it from search bar */
-  margin: 60px auto 40px auto; 
+  margin: 24px auto 0; /* Reduced to align neater */
+  width: 100%;
   max-width: 700px;
+  
   font-size: 0.95rem;
   color: var(--muted);
   text-align: center;
@@ -361,8 +361,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
-    /* Clean spacing from tip section */
-    margin-top: 20px;
+    margin-top: 40px;
     margin-bottom: 40px; 
 }
 
@@ -683,6 +682,8 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 .spinner { width: 56px; height: 56px; border: 5px solid rgba(255, 255, 255, .1); border-top-color: var(--accent); border-right-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 24px; box-shadow: 0 0 20px rgba(124, 124, 255, 0.3); }
 @keyframes spin { to { transform: rotate(360deg) } }
 .loading-text { color: var(--text); font-size: 1.1rem; font-weight: 600; transition: opacity 0.3s ease-in-out; min-height: 1.5em; text-align: center; max-width: 400px; }
+/* FIXED: Loading Text in Light Mode */
+[data-theme="light"] .loading-text { color: #1a1d29; }
 
 .empty-state { text-align: center; padding: 60px 20px; background: transparent; border: none; margin: 20px 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; animation: fadeIn 0.4s ease-out; }
 .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.8; }
@@ -698,7 +699,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 .attribution { font-size: 0.8rem; color: var(--text-secondary, rgba(255, 255, 255, 0.4)); font-weight: 400; letter-spacing: 0.5px; }
 .attribution span { font-weight: 700; color: var(--text-primary, #fff); opacity: 0.8; }
 
-/* === FIXED: LIGHT MODE FOOTER === */
+/* === FIXED: LIGHT MODE FOOTER TEXT === */
 [data-theme="light"] .footer { background: transparent; border-top: 1px solid rgba(0,0,0,0.05); }
 [data-theme="light"] .main-tagline { color: #1e293b !important; }
 [data-theme="light"] .attribution { color: #475569 !important; }
@@ -785,7 +786,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 }
 .modal-providers h4 { margin: 0 0 12px 0; font-size: 0.9rem; color: var(--muted); }
 
-/* === HOME PAGE LOGIC (Scrolling Enabled) === */
+/* === HOME PAGE FIX (Scrolling Enabled + Sticky Footer) === */
 .home-body {
     min-height: 100vh;
     display: flex;
@@ -799,7 +800,14 @@ small { margin-top: 20px; color: var(--muted); display: block; }
     flex-grow: 1;
     min-height: 0;
     height: auto;
+    padding-bottom: 0;
 }
+.home-body .availability-note {
+    margin-top: auto; 
+    margin-bottom: 20px;
+}
+
+/* FIXED FOOTER FOR HOME PAGE ONLY */
 .home-body .footer {
     background: transparent;
     border-top: none;
