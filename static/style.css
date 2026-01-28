@@ -25,7 +25,7 @@ button:focus { outline: none; }
 
 html, body {
   width: 100%;
-  overflow-x: hidden; /* Critical for Mobile: Stops side scrolling */
+  overflow-x: hidden; 
 }
 
 body {
@@ -183,7 +183,7 @@ body {
   text-align: center;
   position: relative;
   padding-bottom: 60px;
-  width: 100%; /* Fix mobile width */
+  width: 100%; 
 }
 
 .hero-bg::before {
@@ -198,11 +198,10 @@ body {
 
 .hero-bg > * { position: relative; }
 
-/* FIX: HERO CONTAINER ALIGNMENT */
 .hero {
     width: 100%;
     max-width: 800px;
-    padding: 0 20px; /* Add padding so mobile text isn't cut off */
+    padding: 0 20px; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -213,7 +212,7 @@ body {
   line-height: 1.2;
   margin-bottom: 16px;
   margin-top: 40px; 
-  word-wrap: break-word; /* Prevent long text overflow on mobile */
+  word-wrap: break-word;
 }
 
 .hero span { color: var(--accent); }
@@ -256,12 +255,20 @@ body {
 .mode-btn.active { color: white; }
 .mode-btn.active::before { opacity: 1; }
 
+/* === NEW: SEARCH CONTAINER WRAPPER === */
+.search-container-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px; /* Force separation between form and tip */
+    width: 100%;
+}
+
 .hero-form {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 32px;
   max-width: 700px;
   width: 100%;
   position: relative;
@@ -347,10 +354,8 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 
 /* === FIXED TIP SECTION (Uniform & Centered) === */
 .availability-note {
-  margin: 40px auto 0 auto; /* Strict top spacing */
   width: 100%;
   max-width: 700px;
-  
   font-size: 0.95rem;
   color: var(--muted);
   text-align: center;
@@ -360,6 +365,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   border: 1px solid rgba(124, 124, 255, 0.15);
   border-radius: 12px;
   animation: slideUp 0.6s ease-out 0.4s both;
+  margin: 0; /* Margin handled by parent gap */
 }
 [data-theme="light"] .availability-note { 
     border: 1px solid rgba(0,0,0,0.1); 
@@ -386,6 +392,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
     margin-bottom: 16px;
     color: var(--text);
 }
+[data-theme="light"] .trending-title { color: #1a1d29; }
 
 .trending-scroll {
     display: flex;
@@ -407,6 +414,8 @@ small { margin-top: 20px; color: var(--muted); display: block; }
     border: 1px solid rgba(255,255,255,0.1);
     background: var(--surface);
 }
+[data-theme="light"] .trending-card { border: 1px solid rgba(0,0,0,0.1); }
+
 .trending-card:hover { transform: translateY(-5px); border-color: var(--accent); }
 .trending-card img { width: 100%; height: 100%; object-fit: cover; }
 
