@@ -76,8 +76,6 @@ def get_direct_link(provider_name, movie_title):
     return f"https://www.google.com/search?q={q}+{urllib.parse.quote(provider_name)}"
 
 def get_providers(tmdb_id, media_type, region):
-    # === FIXED: ADDED 'include_video_language' ===
-    # This forces TMDB to check Telugu (te), Hindi (hi), Tamil (ta), etc. for trailers
     url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}&append_to_response=watch/providers,credits,videos&include_video_language=en,te,hi,ta,ml,kn"
     try:
         response = session.get(url, timeout=5)
@@ -93,6 +91,24 @@ def get_collection_parts(collection_id):
         parts = resp.get('parts', [])
         parts.sort(key=lambda x: x.get('release_date', '9999-99-99') or '9999-99-99')
         return parts
+    except: return []
+
+# === NEW: GET TRENDING ===
+def get_trending():
+    url = f"https://api.themoviedb.org/3/trending/all/day?api_key={TMDB_API_KEY}&language=en-US"
+    try:
+        resp = session.get(url).json()
+        results = []
+        for item in resp.get('results', [])[:10]: # Top 10
+            if item.get('media_type') not in ['movie', 'tv']: continue
+            results.append({
+                'title': item.get('title') or item.get('name'),
+                'poster': f"https://image.tmdb.org/t/p/w500{item.get('poster_path')}" if item.get('poster_path') else None,
+                'media_type': item.get('media_type'),
+                'id': item.get('id'),
+                'backdrop': f"https://image.tmdb.org/t/p/w780{item.get('backdrop_path')}" if item.get('backdrop_path') else None
+            })
+        return results
     except: return []
 
 # === 4. SMART SORT ALGORITHM ===
@@ -134,7 +150,6 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
     if not tmdb_id:
         url = "https://api.themoviedb.org/3/search/multi"
         params = {"api_key": TMDB_API_KEY, "query": final_query, "include_adult": "false", "page": 1}
-        
         try:
             resp = session.get(url, params=params).json()
             raw_results = [r for r in resp.get('results', []) if r.get('media_type') in ['movie', 'tv']]
@@ -190,6 +205,15 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
         m_poster = full_data.get('poster_path')
         m_overview = full_data.get('overview', 'No synopsis available.')
         
+        # === NEW: TV SHOW SPECIFICS ===
+        seasons_count = None
+        last_episode = None
+        if m_type == 'tv':
+            seasons_count = full_data.get('number_of_seasons')
+            last_ep_data = full_data.get('last_episode_to_air')
+            if last_ep_data:
+                last_episode = f"S{last_ep_data.get('season_number')}E{last_ep_data.get('episode_number')}: {last_ep_data.get('name')}"
+        
         poster_url = f"https://image.tmdb.org/t/p/w500{m_poster}" if m_poster else "https://via.placeholder.com/500x750?text=No+Poster"
         if m_title in CUSTOM_METADATA and not m_poster: poster_url = CUSTOM_METADATA[m_title]['poster']
 
@@ -211,14 +235,11 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
         credits = full_data.get('credits', {})
         cast = [c['name'] for c in credits.get('cast', [])[:4]]
         crew = credits.get('crew', [])
-        director = next((c['name'] for c in crew if c['job'] == 'Director'), "Unknown")
+        director = next((c['name'] for c in crew if c['job'] == 'Director' or c['job'] == 'Executive Producer'), "Unknown")
         
-        # === SMART VIDEO SELECTION ===
         videos = full_data.get('videos', {}).get('results', [])
-        final_video_key = None
         trailer_key = None
         teaser_key = None
-        
         for v in videos:
             if v['site'] == 'YouTube':
                 if v['type'] == 'Trailer':
@@ -226,7 +247,6 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
                     break
                 elif v['type'] == 'Teaser':
                     teaser_key = v['key']
-        
         final_video_key = trailer_key if trailer_key else teaser_key
         
         status = "Not Streaming"
@@ -271,6 +291,9 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
             'cast': ", ".join(cast),
             'director': director,
             'trailer': final_video_key,
+            'type': m_type, # NEW
+            'seasons': seasons_count, # NEW
+            'last_ep': last_episode, # NEW
             'justwatch_link': f"https://www.justwatch.com/{region.lower()}/search?q={m_title}"
         })
 
@@ -372,7 +395,9 @@ def index():
                 flash(f"CSV Error: {str(e)}", "error")
                 return redirect(url_for('index'))
 
-    return render_template('index.html')
+    # === NEW: Fetch Trending for Home Page ===
+    trending_data = get_trending()
+    return render_template('index.html', trending=trending_data)
 
 @app.route('/api/autocomplete')
 def autocomplete():

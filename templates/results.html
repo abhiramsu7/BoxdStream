@@ -12,7 +12,7 @@
         /* Extra style for Theatrical Badge in summary */
         .summary-theatrical strong { color: #f59e0b !important; }
         .summary-theatrical:hover { border-color: #f59e0b !important; }
-        .card { cursor: pointer; } /* Make cards look clickable */
+        .card { cursor: pointer; } 
     </style>
 </head>
 <body>
@@ -74,6 +74,10 @@
             <span class="data-director">{{ movie.director }}</span>
             <span class="data-cast">{{ movie.cast }}</span>
             <span class="data-trailer">{{ movie.trailer }}</span>
+            <span class="data-type">{{ movie.type }}</span>
+            <span class="data-seasons">{{ movie.seasons }}</span>
+            <span class="data-lastep">{{ movie.last_ep }}</span>
+            
             <div class="data-providers">
                 {% if movie.providers %}
                     {% for p in movie.providers %}
@@ -125,12 +129,24 @@
             <iframe id="modal-iframe" src="" allowfullscreen></iframe>
         </div>
         
+        <div id="modal-yt-link" style="display:none; padding: 0 24px;">
+            <a href="#" target="_blank" id="yt-anchor" class="yt-btn">
+                <svg class="yt-icon" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                Watch on YouTube
+            </a>
+        </div>
+
         <div class="modal-body">
             <h2 id="modal-title" class="modal-title">Movie Title</h2>
             <div class="modal-meta">
                 <span id="modal-year">2024</span> • <span id="modal-director" style="color:var(--accent)">Director</span>
             </div>
             
+            <div id="modal-tv-details" style="display:none; margin-bottom: 12px; background:rgba(124,124,255,0.1); padding:10px; border-radius:8px;">
+                <span style="display:block; font-weight:700; color:var(--accent);">📺 Series Info</span>
+                <span id="modal-seasons"></span> • <span id="modal-lastep"></span>
+            </div>
+
             <p id="modal-desc" class="modal-desc">Description...</p>
             
             <div class="modal-cast">
@@ -159,55 +175,75 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
+    // === NEW: AUTO-OPEN MODAL LOGIC ===
+    document.addEventListener("DOMContentLoaded", function() {
+        const cards = document.querySelectorAll('.card');
+        // Only auto-open if exactly 1 result AND it's not empty/hidden
+        if (cards.length === 1) {
+            openModal(cards[0]);
+        }
+    });
+
     // === MODAL LOGIC ===
     const modal = document.getElementById('movie-modal');
     const iframe = document.getElementById('modal-iframe');
     const vidContainer = document.getElementById('modal-video-container');
+    const ytLinkContainer = document.getElementById('modal-yt-link');
+    const ytAnchor = document.getElementById('yt-anchor');
+    const tvDetails = document.getElementById('modal-tv-details');
 
     function openModal(card) {
         const data = card.querySelector('.hidden-data');
         
-        // Populate Text
         document.getElementById('modal-title').textContent = data.querySelector('.data-title').textContent;
         document.getElementById('modal-year').textContent = data.querySelector('.data-year').textContent;
         document.getElementById('modal-desc').textContent = data.querySelector('.data-overview').textContent;
         document.getElementById('modal-director').textContent = data.querySelector('.data-director').textContent;
         document.getElementById('modal-cast-list').textContent = data.querySelector('.data-cast').textContent;
-        
-        // Populate Providers (Copy inner HTML)
         document.getElementById('modal-providers-list').innerHTML = data.querySelector('.data-providers').innerHTML;
 
-        // Handle Trailer
+        // TV Logic
+        const type = data.querySelector('.data-type').textContent;
+        if (type === 'tv') {
+            tvDetails.style.display = 'block';
+            document.getElementById('modal-seasons').textContent = data.querySelector('.data-seasons').textContent + " Seasons";
+            document.getElementById('modal-lastep').textContent = "Latest: " + data.querySelector('.data-lastep').textContent;
+        } else {
+            tvDetails.style.display = 'none';
+        }
+
         const trailerKey = data.querySelector('.data-trailer').textContent;
+        
         if (trailerKey && trailerKey !== 'None') {
             iframe.src = `https://www.youtube.com/embed/${trailerKey}?autoplay=1`;
             vidContainer.style.display = 'block';
+            ytAnchor.href = `https://www.youtube.com/watch?v=${trailerKey}`;
+            ytLinkContainer.style.display = 'block';
         } else {
             iframe.src = '';
             vidContainer.style.display = 'none';
+            ytLinkContainer.style.display = 'none';
         }
 
         modal.classList.add('active');
-        document.body.style.overflow = 'hidden'; // Stop background scrolling
+        document.body.style.overflow = 'hidden';
     }
 
     function closeModal() {
         modal.classList.remove('active');
-        iframe.src = ''; // Stop video
+        iframe.src = '';
         document.body.style.overflow = '';
     }
 
-    // Close on outside click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
     });
 
-    // Close on Esc key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
     });
 
-    // === EXISTING FILTER LOGIC ===
+    // === FILTER LOGIC ===
     const emptyMessages = {
         'netflix': { emoji: "📺", title: "Tudum... Silence.", desc: "Are you still watching? Because we couldn't find any matches here." },
         'prime': { emoji: "📦", title: "Delivery Delayed.", desc: "Even Prime One-Day delivery couldn't find these movies." },

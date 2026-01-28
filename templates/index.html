@@ -91,6 +91,21 @@
         <small class="availability-note">
             💡 <strong>Tip:</strong> Export your watchlist from Letterboxd (Settings > Import & Export) or search for individual titles to get started.
         </small>
+
+        {% if trending %}
+        <div class="trending-section">
+            <h3 class="trending-title">Trending Today 🔥</h3>
+            <div class="trending-scroll">
+                {% for item in trending %}
+                <div class="trending-card" onclick="searchTrending('{{ item.title }}', '{{ item.id }}', '{{ item.media_type }}')">
+                    {% if item.poster %}
+                    <img src="{{ item.poster }}" alt="{{ item.title }}">
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -107,7 +122,16 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-    // === 1. TAGLINE & LOADING LOGIC ===
+    // === 1. TRENDING CLICK LOGIC ===
+    function searchTrending(title, id, type) {
+        document.getElementById('movie-search').value = title;
+        document.getElementById('tmdb_id').value = id;
+        document.getElementById('media_type').value = type;
+        // Trigger smooth submit
+        smoothSubmit(document.getElementById('search-form'));
+    }
+
+    // === 2. TAGLINE & LOADING LOGIC ===
     document.addEventListener("DOMContentLoaded", function() {
         const taglines = [
             "Made with <span class='heart'>❤️</span> for Cinema.",
@@ -164,7 +188,7 @@
         }, 2000); 
     }
 
-    // === 2. SMOOTH SUBMIT FUNCTION (FIXED) ===
+    // === 3. SMOOTH SUBMIT FUNCTION (FIXED) ===
     function smoothSubmit(targetForm) {
         const loader = document.getElementById('loader');
         const autocompleteList = document.getElementById('autocomplete-list');
@@ -182,7 +206,6 @@
         }, 1200); 
     }
 
-    // LISTENER FOR ALL FORMS (Search & CSV)
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault(); 
@@ -190,7 +213,7 @@
         });
     });
 
-    // === 3. AUTOCOMPLETE & ENTER KEY LOGIC ===
+    // === 4. AUTOCOMPLETE & ENTER KEY LOGIC ===
     const searchInput = document.getElementById('movie-search');
     const autocompleteList = document.getElementById('autocomplete-list');
     const searchForm = document.getElementById('search-form'); 
@@ -199,7 +222,6 @@
     let currentFocus = -1; 
 
     if (searchInput) {
-        // GLOBAL ENTER KEY
         document.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 const activeElement = document.activeElement;
@@ -217,7 +239,6 @@
             }
         });
 
-        // ARROW KEYS
         searchInput.addEventListener("keydown", function(e) {
             let items = autocompleteList.getElementsByClassName("autocomplete-item");
             if (e.key === "ArrowDown") { currentFocus++; addActive(items); } 
@@ -237,7 +258,6 @@
             for (let i = 0; i < items.length; i++) items[i].classList.remove("selected");
         }
 
-        // TOOLTIP INJECTION LOGIC
         searchInput.addEventListener('input', function() {
             document.getElementById('tmdb_id').value = ''; 
             document.getElementById('media_type').value = '';
@@ -265,7 +285,6 @@
                             div.className = 'autocomplete-item';
                             const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
                             
-                            // INJECT HTML WITH TOOLTIP
                             div.innerHTML = `
                                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                                     <span><strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span></span>
