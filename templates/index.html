@@ -124,12 +124,13 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-    // ... (Keep existing script logic for trending, loading, submit, autocomplete) ...
+    // ... (Keep your existing script, no changes needed to logic) ...
     // === 1. TRENDING CLICK LOGIC ===
     function searchTrending(title, id, type) {
         document.getElementById('movie-search').value = title;
         document.getElementById('tmdb_id').value = id;
         document.getElementById('media_type').value = type;
+        // Trigger smooth submit
         smoothSubmit(document.getElementById('search-form'));
     }
 
@@ -190,7 +191,7 @@
         }, 2000); 
     }
 
-    // === 3. SMOOTH SUBMIT FUNCTION ===
+    // === 3. SMOOTH SUBMIT FUNCTION (FIXED) ===
     function smoothSubmit(targetForm) {
         const loader = document.getElementById('loader');
         const autocompleteList = document.getElementById('autocomplete-list');
@@ -208,10 +209,11 @@
         }, 1200); 
     }
 
+    // LISTENER FOR ALL FORMS (Search & CSV)
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault(); 
-            smoothSubmit(this); 
+            smoothSubmit(this); // Pass 'this' (the form being submitted)
         });
     });
 
@@ -224,6 +226,7 @@
     let currentFocus = -1; 
 
     if (searchInput) {
+        // GLOBAL ENTER KEY
         document.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 const activeElement = document.activeElement;
@@ -241,6 +244,7 @@
             }
         });
 
+        // ARROW KEYS
         searchInput.addEventListener("keydown", function(e) {
             let items = autocompleteList.getElementsByClassName("autocomplete-item");
             if (e.key === "ArrowDown") { currentFocus++; addActive(items); } 
@@ -260,6 +264,7 @@
             for (let i = 0; i < items.length; i++) items[i].classList.remove("selected");
         }
 
+        // TOOLTIP INJECTION LOGIC
         searchInput.addEventListener('input', function() {
             document.getElementById('tmdb_id').value = ''; 
             document.getElementById('media_type').value = '';
@@ -287,6 +292,7 @@
                             div.className = 'autocomplete-item';
                             const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
                             
+                            // INJECT HTML WITH TOOLTIP
                             div.innerHTML = `
                                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                                     <span><strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span></span>
