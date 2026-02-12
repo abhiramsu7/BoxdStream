@@ -9,7 +9,6 @@
     <style>
         .heart { display: inline-block; color: #e50914; animation: heartbeat 1.5s infinite ease-in-out; }
         @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
-        /* Extra style for Theatrical Badge in summary */
         .summary-theatrical strong { color: #f59e0b !important; }
         .summary-theatrical:hover { border-color: #f59e0b !important; }
         .card { cursor: pointer; } 
@@ -77,6 +76,18 @@
             <span class="data-type">{{ movie.type }}</span>
             <span class="data-seasons">{{ movie.seasons }}</span>
             <span class="data-lastep">{{ movie.last_ep }}</span>
+            
+            <div class="data-deep-links">
+                {% if movie.deep_links %}
+                    <div style="margin-top:10px;">
+                        <p style="font-size:0.9rem; color:var(--muted); margin-bottom:8px;">Availability unsure?</p>
+                        {% for link in movie.deep_links %}
+                            <a href="{{ link.url }}" target="_blank" class="quick-link" style="width:100%; text-align:center; justify-content:center;">{{ link.name }}</a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
             <div class="data-providers">
                 {% if movie.providers %}
                     {% for p in movie.providers %}
@@ -111,7 +122,7 @@
                 </div>
             {% else %}
                 <span class="static-status" 
-                      style="color: {% if movie.status == 'In Theaters' %}#f59e0b{% elif movie.status == 'Coming Soon' %}#22c55e{% else %}#9aa0b4{% endif %}; font-weight:700; font-size:0.9rem;">
+                      style="color: {% if movie.status == 'In Theaters' %}#f59e0b{% elif movie.status == 'Coming Soon' %}#22c55e{% elif movie.status == 'Digital Release Soon' %}#3b82f6{% else %}#9aa0b4{% endif %}; font-weight:700; font-size:0.9rem;">
                     {{ movie.status }}
                 </span>
             {% endif %}
@@ -156,6 +167,8 @@
             <div class="modal-providers">
                 <h4>Where to Watch</h4>
                 <div id="modal-providers-list" class="provider-grid" style="gap:10px;"></div>
+                
+                <div id="modal-deep-links" style="margin-top:16px;"></div>
             </div>
         </div>
     </div>
@@ -185,6 +198,7 @@
     const ytLinkContainer = document.getElementById('modal-yt-link');
     const ytAnchor = document.getElementById('yt-anchor');
     const tvDetails = document.getElementById('modal-tv-details');
+    const deepLinksContainer = document.getElementById('modal-deep-links');
 
     function openModal(card) {
         const data = card.querySelector('.hidden-data');
@@ -194,6 +208,15 @@
         document.getElementById('modal-director').textContent = data.querySelector('.data-director').textContent;
         document.getElementById('modal-cast-list').textContent = data.querySelector('.data-cast').textContent;
         document.getElementById('modal-providers-list').innerHTML = data.querySelector('.data-providers').innerHTML;
+
+        // INJECT JUSTWATCH LINK
+        const deepLinksData = data.querySelector('.data-deep-links');
+        if (deepLinksData && deepLinksData.innerHTML.trim() !== "") {
+            deepLinksContainer.innerHTML = deepLinksData.innerHTML;
+            deepLinksContainer.style.display = 'block';
+        } else {
+            deepLinksContainer.style.display = 'none';
+        }
 
         const type = data.querySelector('.data-type').textContent;
         if (type === 'tv') {
@@ -228,6 +251,7 @@
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
 
+    // Filter Logic remains the same (Corrected Selector)
     const emptyMessages = {
         'netflix': { emoji: "📺", title: "Tudum... Silence.", desc: "Are you still watching? Because we couldn't find any matches here." },
         'prime': { emoji: "📦", title: "Delivery Delayed.", desc: "Even Prime One-Day delivery couldn't find these movies." },
@@ -254,7 +278,6 @@
         let visibleCount = 0;
         
         cards.forEach(card => {
-            // FIXED: Only target the VISIBLE badges in the card-status
             const badges = card.querySelectorAll('.card-status .provider-icon');
             const cardStatus = card.getAttribute('data-specific-status');
             let showCard = false;
@@ -278,7 +301,7 @@
                 badges.forEach(badge => {
                     const name = badge.getAttribute('data-name');
                     const label = badge.getAttribute('data-label');
-                    if (!name || !label) return; // Skip if missing attrs
+                    if (!name || !label) return;
 
                     const nameLower = name.toLowerCase();
                     const labelLower = label.toLowerCase();
