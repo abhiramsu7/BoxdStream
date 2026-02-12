@@ -45,9 +45,8 @@ Unlike standard lookup tools, BoxdStream uses a **"Smart Fallback" algorithm**. 
 * **🌙 Dark/Light Mode:** A polished, professional UI with automatic theme persistence.
 * **📱 Fully Responsive:** Optimized for mobile, tablet, and desktop with native-app-like interactions.
 
-## 🚀 Installation
+## 🌟 Acknowledgements
 
-1. **Clone the repository**
-   ```bash
-   git clone [https://github.com/abhiramsu7/BoxdStream.git](https://github.com/abhiramsu7/BoxdStream.git)
-   cd BoxdStream
+* **[TMDB API](https://www.themoviedb.org/documentation/api)** for the extensive movie metadata.
+* **[Letterboxd](https://letterboxd.com/)** for the inspiration and community.
+* **[JustWatch](https://www.justwatch.com/)** for being the backbone of streaming availability.
