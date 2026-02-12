@@ -78,21 +78,23 @@
             <span class="data-lastep">{{ movie.last_ep }}</span>
             
             <div class="data-deep-links">
-    {% if movie.deep_links %}
-        <div style="margin-top:16px; text-align:center;">
-            <p style="font-size:0.9rem; color:var(--muted); margin-bottom:12px;">Digital rights unclear. Check here:</p>
-            {% for link in movie.deep_links %}
-                <a href="{{ link.url }}" target="_blank" style="display:inline-block; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    {% if link.logo %}
-                        <img src="{{ link.logo }}" alt="{{ link.name }}" style="height:32px; width:auto; display:block;">
-                    {% else %}
-                        <span class="quick-link">{{ link.name }}</span>
-                    {% endif %}
-                </a>
-            {% endfor %}
-        </div>
-    {% endif %}
-</div>
+                {% if movie.deep_links %}
+                    <div style="margin-top:16px; text-align:center;">
+                        <p style="font-size:0.9rem; color:var(--muted); margin-bottom:12px;">Digital rights unclear. Check here:</p>
+                        <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+                        {% for link in movie.deep_links %}
+                            <a href="{{ link.url }}" target="_blank" style="display:inline-block; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                {% if link.logo %}
+                                    <img src="{{ link.logo }}" alt="{{ link.name }}" style="height:32px; width:auto; display:block;">
+                                {% else %}
+                                    <span class="quick-link">{{ link.name }}</span>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
 
             <div class="data-providers">
                 {% if movie.providers %}
@@ -205,9 +207,12 @@
     const ytAnchor = document.getElementById('yt-anchor');
     const tvDetails = document.getElementById('modal-tv-details');
     const deepLinksContainer = document.getElementById('modal-deep-links');
+    const providersSection = document.querySelector('.modal-providers'); // Select the wrapper
 
     function openModal(card) {
         const data = card.querySelector('.hidden-data');
+        const status = card.getAttribute('data-specific-status'); // Get status
+
         document.getElementById('modal-title').textContent = data.querySelector('.data-title').textContent;
         document.getElementById('modal-year').textContent = data.querySelector('.data-year').textContent;
         document.getElementById('modal-desc').textContent = data.querySelector('.data-overview').textContent;
@@ -215,7 +220,14 @@
         document.getElementById('modal-cast-list').textContent = data.querySelector('.data-cast').textContent;
         document.getElementById('modal-providers-list').innerHTML = data.querySelector('.data-providers').innerHTML;
 
-        // INJECT JUSTWATCH LINK
+        // === FIXED LOGIC: HIDE "WHERE TO WATCH" FOR UNRELEASED MOVIES ===
+        if (status === 'Coming Soon' || status === 'In Theaters') {
+            providersSection.style.display = 'none';
+        } else {
+            providersSection.style.display = 'block';
+        }
+
+        // INJECT DEEP LINKS (JUSTWATCH)
         const deepLinksData = data.querySelector('.data-deep-links');
         if (deepLinksData && deepLinksData.innerHTML.trim() !== "") {
             deepLinksContainer.innerHTML = deepLinksData.innerHTML;
@@ -257,7 +269,7 @@
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
 
-    // Filter Logic remains the same (Corrected Selector)
+    // ... (Filter Logic Same as Previous) ...
     const emptyMessages = {
         'netflix': { emoji: "📺", title: "Tudum... Silence.", desc: "Are you still watching? Because we couldn't find any matches here." },
         'prime': { emoji: "📦", title: "Delivery Delayed.", desc: "Even Prime One-Day delivery couldn't find these movies." },
