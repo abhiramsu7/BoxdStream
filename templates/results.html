@@ -78,15 +78,21 @@
             <span class="data-lastep">{{ movie.last_ep }}</span>
             
             <div class="data-deep-links">
-                {% if movie.deep_links %}
-                    <div style="margin-top:10px;">
-                        <p style="font-size:0.9rem; color:var(--muted); margin-bottom:8px;">Availability unsure?</p>
-                        {% for link in movie.deep_links %}
-                            <a href="{{ link.url }}" target="_blank" class="quick-link" style="width:100%; text-align:center; justify-content:center;">{{ link.name }}</a>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
+    {% if movie.deep_links %}
+        <div style="margin-top:16px; text-align:center;">
+            <p style="font-size:0.9rem; color:var(--muted); margin-bottom:12px;">Digital rights unclear. Check here:</p>
+            {% for link in movie.deep_links %}
+                <a href="{{ link.url }}" target="_blank" style="display:inline-block; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    {% if link.logo %}
+                        <img src="{{ link.logo }}" alt="{{ link.name }}" style="height:32px; width:auto; display:block;">
+                    {% else %}
+                        <span class="quick-link">{{ link.name }}</span>
+                    {% endif %}
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
 
             <div class="data-providers">
                 {% if movie.providers %}

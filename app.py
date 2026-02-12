@@ -254,7 +254,8 @@ def process_single_search(query, region, tmdb_id=None, media_type="movie", year=
                     # Generate ONE fallback link to JustWatch
                     q_enc = urllib.parse.quote(m_title)
                     deep_links = [
-                        {'name': 'Check Status on JustWatch', 'url': f"https://www.justwatch.com/{region.lower()}/search?q={q_enc}"}
+                        {'name': 'Check Status on JustWatch', 'url': f"https://www.justwatch.com/{region.lower()}/search?q={q_enc}",
+                         'logo': 'https://www.themoviedb.org/assets/2/v4/logos/justwatch-c2e58adf5809b6871db650fb74b43db2b8f3637fe3709262572553fa056d8d0a.svg'}
                     ]
                 
                 # 3. Old Movies: 120+ Days

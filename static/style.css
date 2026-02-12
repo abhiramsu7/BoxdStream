@@ -383,7 +383,10 @@ small { margin-top: 20px; color: var(--muted); display: block; }
     width: 100%;
     text-align: left;
     max-width: 900px;
-    margin: 40px auto; 
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 40px;
+    margin-bottom: 40px; 
 }
 
 .trending-title {
@@ -398,7 +401,8 @@ small { margin-top: 20px; color: var(--muted); display: block; }
     display: flex;
     gap: 16px;
     overflow-x: auto;
-    padding: 0 20px 20px 20px;
+    /* UPDATED: Added top padding (10px) so hover doesn't clip */
+    padding: 10px 20px 20px 20px; 
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 }
