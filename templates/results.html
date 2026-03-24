@@ -175,7 +175,6 @@
             <div class="modal-providers">
                 <h4>Where to Watch</h4>
                 <div id="modal-providers-list" class="provider-grid" style="gap:10px;"></div>
-                
                 <div id="modal-deep-links" style="margin-top:16px;"></div>
             </div>
         </div>
@@ -207,11 +206,11 @@
     const ytAnchor = document.getElementById('yt-anchor');
     const tvDetails = document.getElementById('modal-tv-details');
     const deepLinksContainer = document.getElementById('modal-deep-links');
-    const providersSection = document.querySelector('.modal-providers'); // Select the wrapper
+    const providersSection = document.querySelector('.modal-providers'); 
 
     function openModal(card) {
         const data = card.querySelector('.hidden-data');
-        const status = card.getAttribute('data-specific-status'); // Get status
+        const status = card.getAttribute('data-specific-status'); 
 
         document.getElementById('modal-title').textContent = data.querySelector('.data-title').textContent;
         document.getElementById('modal-year').textContent = data.querySelector('.data-year').textContent;
@@ -220,14 +219,12 @@
         document.getElementById('modal-cast-list').textContent = data.querySelector('.data-cast').textContent;
         document.getElementById('modal-providers-list').innerHTML = data.querySelector('.data-providers').innerHTML;
 
-        // === FIXED LOGIC: HIDE "WHERE TO WATCH" FOR UNRELEASED MOVIES ===
         if (status === 'Coming Soon' || status === 'In Theaters') {
             providersSection.style.display = 'none';
         } else {
             providersSection.style.display = 'block';
         }
 
-        // INJECT DEEP LINKS (JUSTWATCH)
         const deepLinksData = data.querySelector('.data-deep-links');
         if (deepLinksData && deepLinksData.innerHTML.trim() !== "") {
             deepLinksContainer.innerHTML = deepLinksData.innerHTML;
@@ -269,7 +266,6 @@
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
 
-    // ... (Filter Logic Same as Previous) ...
     const emptyMessages = {
         'netflix': { emoji: "📺", title: "Tudum... Silence.", desc: "Are you still watching? Because we couldn't find any matches here." },
         'prime': { emoji: "📦", title: "Delivery Delayed.", desc: "Even Prime One-Day delivery couldn't find these movies." },

@@ -97,14 +97,18 @@
         {% if trending %}
         <div class="trending-section">
             <h3 class="trending-title">Trending Today 🔥</h3>
-            <div class="trending-scroll">
-                {% for item in trending %}
-                <div class="trending-card" onclick="searchTrending('{{ item.title }}', '{{ item.id }}', '{{ item.media_type }}')">
-                    {% if item.poster %}
-                    <img src="{{ item.poster }}" alt="{{ item.title }}">
-                    {% endif %}
+            <div class="carousel-wrapper">
+                <button class="carousel-btn left" onclick="slideTrending(-1)">&#10094;</button>
+                <div class="trending-scroll" id="trending-container">
+                    {% for item in trending %}
+                    <div class="trending-card" onclick="searchTrending('{{ item.title }}', '{{ item.id }}', '{{ item.media_type }}')">
+                        {% if item.poster %}
+                        <img src="{{ item.poster }}" alt="{{ item.title }}">
+                        {% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                <button class="carousel-btn right" onclick="slideTrending(1)">&#10095;</button>
             </div>
         </div>
         {% endif %}
@@ -124,13 +128,18 @@
 
 <script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-    // ... (Keep your existing script, no changes needed to logic) ...
+    // === NEW: TRENDING CAROUSEL SLIDE LOGIC ===
+    function slideTrending(direction) {
+        const container = document.getElementById('trending-container');
+        const scrollAmount = 300; // Pixels to slide per click
+        container.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+    }
+
     // === 1. TRENDING CLICK LOGIC ===
     function searchTrending(title, id, type) {
         document.getElementById('movie-search').value = title;
         document.getElementById('tmdb_id').value = id;
         document.getElementById('media_type').value = type;
-        // Trigger smooth submit
         smoothSubmit(document.getElementById('search-form'));
     }
 
@@ -191,7 +200,7 @@
         }, 2000); 
     }
 
-    // === 3. SMOOTH SUBMIT FUNCTION (FIXED) ===
+    // === 3. SMOOTH SUBMIT FUNCTION ===
     function smoothSubmit(targetForm) {
         const loader = document.getElementById('loader');
         const autocompleteList = document.getElementById('autocomplete-list');
@@ -209,11 +218,11 @@
         }, 1200); 
     }
 
-    // LISTENER FOR ALL FORMS (Search & CSV)
+    // LISTENER FOR ALL FORMS
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault(); 
-            smoothSubmit(this); // Pass 'this' (the form being submitted)
+            smoothSubmit(this); 
         });
     });
 
@@ -226,7 +235,6 @@
     let currentFocus = -1; 
 
     if (searchInput) {
-        // GLOBAL ENTER KEY
         document.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 const activeElement = document.activeElement;
@@ -244,7 +252,6 @@
             }
         });
 
-        // ARROW KEYS
         searchInput.addEventListener("keydown", function(e) {
             let items = autocompleteList.getElementsByClassName("autocomplete-item");
             if (e.key === "ArrowDown") { currentFocus++; addActive(items); } 
@@ -264,7 +271,6 @@
             for (let i = 0; i < items.length; i++) items[i].classList.remove("selected");
         }
 
-        // TOOLTIP INJECTION LOGIC
         searchInput.addEventListener('input', function() {
             document.getElementById('tmdb_id').value = ''; 
             document.getElementById('media_type').value = '';
@@ -292,7 +298,6 @@
                             div.className = 'autocomplete-item';
                             const typeBadge = item.media_type === 'movie' ? '<span class="type-badge badge-movie">MOVIE</span>' : '<span class="type-badge badge-tv">TV</span>';
                             
-                            // INJECT HTML WITH TOOLTIP
                             div.innerHTML = `
                                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                                     <span><strong>${item.title}</strong> <span style="color:var(--muted); font-size:0.85rem">(${item.year})</span></span>
