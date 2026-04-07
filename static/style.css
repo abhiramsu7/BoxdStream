@@ -479,15 +479,33 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 }
 .autocomplete-dropdown:not(:empty) { border: 1px solid rgba(124, 124, 255, 0.3); }
 
+/* === THE GHOST PILL SCROLLBAR === */
+.autocomplete-dropdown::-webkit-scrollbar { 
+    width: 6px; /* Ultra-thin sleek profile */
+}
+.autocomplete-dropdown::-webkit-scrollbar-track { 
+    background: transparent; /* Completely invisible track */
+}
+.autocomplete-dropdown::-webkit-scrollbar-thumb { 
+    background: rgba(124, 124, 255, 0.15); /* Subtle resting color */
+    border-radius: 10px; /* Fully rounded pill shape */
+    transition: background 0.3s;
+}
+.autocomplete-dropdown::-webkit-scrollbar-thumb:hover { 
+    background: var(--accent); /* Lights up solid purple when hovered/dragged */
+}
+
+/* === AUTOCOMPLETE ITEMS === */
 .autocomplete-item {
   padding: 12px 16px;
   cursor: pointer;
   transition: all 0.2s ease;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  
+  /* FIXED: Set to Column so the synopsis expands downward natively */
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch; 
   position: relative;
 }
 .autocomplete-item:last-child { border-bottom: none; border-radius: 0 0 12px 12px; }
@@ -508,46 +526,40 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   flex-shrink: 1;
 }
 
+/* === INLINE REVEAL SYNOPSIS (Idea 1) === */
 .suggestion-tooltip {
-    visibility: hidden;
-    width: 260px;
-    background-color: rgba(15, 18, 26, 0.98);
-    color: #e0e0e0;
+    width: 100%;
+    color: var(--muted);
     text-align: left;
-    border-radius: 8px;
-    padding: 12px;
-    position: absolute;
-    z-index: 1001;
-    left: 102%;
-    top: 50%;
-    transform: translateY(-50%);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    border: 1px solid rgba(255,255,255,0.1);
-    opacity: 0;
-    transition: opacity 0.2s;
     font-size: 0.8rem;
     line-height: 1.5;
-    pointer-events: none;
-}
-.suggestion-tooltip strong { color: var(--accent); display: block; margin-bottom: 4px; }
-.autocomplete-item:hover .suggestion-tooltip { visibility: visible; opacity: 1; }
-
-.suggestion-tooltip::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    right: 100%;
-    margin-top: -6px;
-    border-width: 6px;
-    border-style: solid;
-    border-color: transparent rgba(15, 18, 26, 0.98) transparent transparent;
+    
+    /* The Animation Magic: Hidden by default, height is 0 */
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-top: 0;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
 }
 
-.autocomplete-dropdown::-webkit-scrollbar { width: 8px; }
-.autocomplete-dropdown::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 0 12px 12px 0; }
-.autocomplete-dropdown::-webkit-scrollbar-thumb { background: rgba(124, 124, 255, 0.3); border-radius: 4px; }
-.autocomplete-dropdown::-webkit-scrollbar-thumb:hover { background: rgba(124, 124, 255, 0.5); }
+/* Light mode adjustment */
+[data-theme="light"] .suggestion-tooltip { color: #64748b; }
 
+.suggestion-tooltip strong { 
+    color: var(--accent); 
+    display: inline-block; 
+    margin-bottom: 4px; 
+}
+
+/* Hover Action: Expands height smoothly and fades in */
+.autocomplete-item:hover .suggestion-tooltip,
+.autocomplete-item.selected .suggestion-tooltip { 
+    max-height: 100px; /* Expands to fit 2-3 lines of text */
+    opacity: 1; 
+    margin-top: 10px; /* Pushes away from the title */
+}
+
+/* Type Badges (Movie/TV) */
 .type-badge {
   font-size: 0.7rem;
   padding: 3px 8px;
