@@ -59,12 +59,32 @@ body {
   border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
+/* === REFINED LOGO WITH ICON === */
 .logo {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Space between the icon and the text */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo:hover {
+  transform: translateY(-2px); /* Slight lift when clicked/hovered */
+}
+
+/* The SVG Icon Styling */
+.logo-icon {
+  width: 32px; /* Perfect size to match your font */
+  height: 32px;
+  flex-shrink: 0;
+}
+
+/* The Text Container */
+.logo-text {
   font-family: 'Manrope', sans-serif;
   font-weight: 800;
   font-size: 1.5rem;
   letter-spacing: -1px;
-  text-decoration: none;
   display: flex;
   align-items: center;
 }
