@@ -20,7 +20,6 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* === BUTTON RESET === */
 button:focus { outline: none; }
 
 html, body {
@@ -37,7 +36,6 @@ body {
   flex-direction: column;
 }
 
-/* === UTILITY === */
 .hidden { display: none !important; }
 
 /* === NAVIGATION === */
@@ -163,7 +161,7 @@ body {
 .filter-btn:hover {
   background: rgba(124, 124, 255, 0.1);
   color: var(--text);
-  border-color: rgba(124, 124, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(124,124,255,0.15);
 }
 
 .filter-btn.active {
@@ -190,7 +188,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  /* NEW: Midnight Mesh Aurora Gradient */
+  /* Midnight Mesh Aurora Gradient */
   background:
     radial-gradient(800px circle at 15% 30%, rgba(139, 92, 246, 0.18), transparent 40%),
     radial-gradient(1000px circle at 85% 70%, rgba(99, 102, 241, 0.15), transparent 50%),
@@ -219,22 +217,48 @@ body {
 }
 
 .hero h1 span { 
-    /* NEW: Handwritten font and neon glow */
+    /* Handwritten font and neon glow */
     font-family: 'Caveat', cursive;
-    font-size: 1.25em; /* Makes the cursive text pop */
+    font-size: 1.25em; 
     font-weight: 700;
     color: var(--accent); 
     letter-spacing: 1px;
     text-shadow: 0 0 20px rgba(124, 124, 255, 0.5), 0 0 40px rgba(124, 124, 255, 0.2);
     display: inline-block;
-    transform: rotate(-2deg); /* Gives it a slight, natural handwritten tilt */
+    transform: rotate(-2deg); 
 }
 
-/* Make sure it stays dark and readable in light mode */
 [data-theme="light"] .hero h1 span {
     text-shadow: none;
     color: #4f46e5;
 }
+
+/* === MODE TOGGLE (Search / Upload) === */
+.mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+  margin-bottom: 36px; /* THIS FIXES THE DESKTOP COLLISION */
+  padding: 6px;
+  border-radius: 12px;
+  
+  /* Frosted Glass */
+  background: rgba(255, 255, 255, 0.03); 
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  
+  position: relative;
+  z-index: 10;
+}
+
+[data-theme="light"] .mode-toggle { 
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0,0,0,0.15); 
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
 .mode-btn {
   background: transparent;
   color: var(--muted);
@@ -263,7 +287,6 @@ body {
 .mode-btn.active { color: white; }
 .mode-btn.active::before { opacity: 1; }
 
-/* === NEW: SEARCH CONTAINER WRAPPER === */
 .search-container-wrapper {
     display: flex;
     flex-direction: column;
@@ -288,7 +311,7 @@ body {
 .search-input { flex: 1 !important; min-width: 200px; width: 100%; }
 
 .hero-form input, .hero-form select {
-  /* NEW: Frosted Glassmorphism Effect */
+  /* Frosted Glassmorphism Effect */
   background: rgba(255, 255, 255, 0.03); 
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -394,33 +417,30 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 }
 
 /* === TRENDING CAROUSEL WITH ARROWS === */
-/* === TRENDING CAROUSEL WITH ARROWS === */
 .trending-section {
     width: 100%;
     text-align: left;
-    max-width: 950px; /* Expanded slightly to fit the outside arrows */
+    max-width: 950px; 
     margin: 40px auto; 
 }
 
 .trending-title {
     font-size: 1.2rem;
-    margin-left: 65px; /* Aligns perfectly with the start of the movie cards */
+    margin-left: 65px; 
     margin-bottom: 0px;
     color: var(--text);
 }
 [data-theme="light"] .trending-title { color: #1a1d29; }
 
-/* Wrapper for Arrows - NOW USING FLEXBOX */
 .carousel-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px; /* This creates an uncrossable 12px gap between arrows and movies */
+    gap: 12px; 
     width: 100%;
     padding: 0 10px;
 }
 
-/* Slick Custom Purple Arrows */
 .carousel-btn {
     background: var(--accent);
     color: white;
@@ -436,19 +456,16 @@ small { margin-top: 20px; color: var(--muted); display: block; }
     justify-content: center;
     box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     transition: transform 0.2s ease, background 0.2s ease;
-    flex-shrink: 0; /* Prevents the arrows from squishing when screen gets smaller */
+    flex-shrink: 0; 
     z-index: 10;
 }
 .carousel-btn:hover { transform: scale(1.1); background: #6b6bff; }
 
-/* Notice: We deleted the .carousel-btn.left and .right absolute classes completely! */
-
 .trending-scroll {
-    flex: 1; /* This tells the scroll box to fill all remaining space between the arrows */
+    flex: 1; 
     display: flex;
     gap: 16px;
     overflow-x: auto;
-    /* Top/Bottom padding gives room for the hover drop-shadow. Side padding keeps edges clean. */
     padding: 15px 5px 30px 5px; 
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
@@ -480,6 +497,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 }
 
 .trending-card img { width: 100%; height: 100%; object-fit: cover; }
+
 /* === AUTOCOMPLETE DROPDOWN === */
 .autocomplete-dropdown {
   position: absolute;
@@ -496,20 +514,14 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 .autocomplete-dropdown:not(:empty) { border: 1px solid rgba(124, 124, 255, 0.3); }
 
 /* === THE GHOST PILL SCROLLBAR === */
-.autocomplete-dropdown::-webkit-scrollbar { 
-    width: 6px; /* Ultra-thin sleek profile */
-}
-.autocomplete-dropdown::-webkit-scrollbar-track { 
-    background: transparent; /* Completely invisible track */
-}
+.autocomplete-dropdown::-webkit-scrollbar { width: 6px; }
+.autocomplete-dropdown::-webkit-scrollbar-track { background: transparent; }
 .autocomplete-dropdown::-webkit-scrollbar-thumb { 
-    background: rgba(124, 124, 255, 0.15); /* Subtle resting color */
-    border-radius: 10px; /* Fully rounded pill shape */
+    background: rgba(124, 124, 255, 0.15); 
+    border-radius: 10px; 
     transition: background 0.3s;
 }
-.autocomplete-dropdown::-webkit-scrollbar-thumb:hover { 
-    background: var(--accent); /* Lights up solid purple when hovered/dragged */
-}
+.autocomplete-dropdown::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
 /* === AUTOCOMPLETE ITEMS === */
 .autocomplete-item {
@@ -517,8 +529,6 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   cursor: pointer;
   transition: all 0.2s ease;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  
-  /* FIXED: Set to Column so the synopsis expands downward natively */
   display: flex;
   flex-direction: column;
   align-items: stretch; 
@@ -542,40 +552,24 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   flex-shrink: 1;
 }
 
-/* === INLINE REVEAL SYNOPSIS (Idea 1) === */
+/* === INLINE REVEAL SYNOPSIS === */
 .suggestion-tooltip {
     width: 100%;
     color: var(--muted);
     text-align: left;
     font-size: 0.8rem;
     line-height: 1.5;
-    
-    /* The Animation Magic: Hidden by default, height is 0 */
     max-height: 0;
     opacity: 0;
     overflow: hidden;
     margin-top: 0;
     transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
 }
-
-/* Light mode adjustment */
 [data-theme="light"] .suggestion-tooltip { color: #64748b; }
-
-.suggestion-tooltip strong { 
-    color: var(--accent); 
-    display: inline-block; 
-    margin-bottom: 4px; 
-}
-
-/* Hover Action: Expands height smoothly and fades in */
+.suggestion-tooltip strong { color: var(--accent); display: inline-block; margin-bottom: 4px; }
 .autocomplete-item:hover .suggestion-tooltip,
-.autocomplete-item.selected .suggestion-tooltip { 
-    max-height: 100px; /* Expands to fit 2-3 lines of text */
-    opacity: 1; 
-    margin-top: 10px; /* Pushes away from the title */
-}
+.autocomplete-item.selected .suggestion-tooltip { max-height: 100px; opacity: 1; margin-top: 10px; }
 
-/* Type Badges (Movie/TV) */
 .type-badge {
   font-size: 0.7rem;
   padding: 3px 8px;
@@ -751,7 +745,10 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   .nav { padding: 20px 24px; }
   .hero { width: 100%; padding: 0 20px; max-width: 100%; }
   .hero h1 { font-size: 2rem; word-wrap: break-word; }
+  
+  /* THIS IS THE MOBILE HIDER. DO NOT REMOVE */
   .mode-toggle { display: none !important; }
+  
   .mode-btn { width: 100%; }
   .hero-form { flex-direction: column; width: 100%; max-width: 100%; margin-left: 0; }
   .hero-form > div, .hero-form input, .hero-form select, .hero-form button { width: 100% !important; flex: none !important; }
@@ -773,7 +770,6 @@ small { margin-top: 20px; color: var(--muted); display: block; }
 }
 
 @media (max-width: 480px) {
-  /* SWIPEABLE HORIZONTAL MOBILE SUMMARY */
   .summary { 
       flex-direction: row; 
       flex-wrap: nowrap; 
