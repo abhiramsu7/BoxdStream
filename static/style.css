@@ -781,7 +781,7 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   .card h3 { font-size: 0.85rem; }
   .scroll-top { bottom: 20px; right: 20px; width: 45px; height: 45px; font-size: 1.3rem; }
   .autocomplete-dropdown { max-height: 250px; }
-  .availability-note { font-size: 0.85rem; padding: 12px 16px; max-width: 90%; margin-top: 32px; }
+  .availability-note { display: none !important; }
   .empty-state { margin: 20px; padding: 40px 20px; }
   .autocomplete-item { padding: 10px 12px; }
   .autocomplete-item strong { font-size: 0.9rem; max-width: 200px; }
