@@ -788,6 +788,86 @@ small { margin-top: 20px; color: var(--muted); display: block; }
   
   .carousel-btn { display: none !important; }
 }
+/* === ROULETTE ROULETTE STYLES === */
+.roulette-fab {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(124, 124, 255, 0.5);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.roulette-fab:hover { transform: translateX(-50%) translateY(-5px); box-shadow: 0 15px 40px rgba(124, 124, 255, 0.7); }
+
+.roulette-content {
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--bg); /* Deep dark background */
+}
+
+.roulette-display {
+    width: 100%;
+    height: 250px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 16px;
+    border: 2px inset rgba(124,124,255,0.2);
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.spin-box {
+    font-size: 5rem;
+    transition: all 0.1s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.spin-box.winner {
+    animation: pulseGlow 1.5s infinite;
+}
+
+@keyframes pulseGlow {
+    0% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(124,124,255,0.4)); }
+    50% { transform: scale(1.05); filter: drop-shadow(0 0 30px rgba(124,124,255,0.8)); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(124,124,255,0.4)); }
+}
+
+.spin-trigger {
+    background: transparent;
+    color: white;
+    border: 2px solid var(--accent);
+    padding: 16px 40px;
+    border-radius: 12px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    max-width: 300px;
+}
+.spin-trigger:hover { background: var(--accent); box-shadow: 0 0 20px rgba(124,124,255,0.5); }
+.spin-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 480px) {
   .summary { 

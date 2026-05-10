@@ -346,5 +346,90 @@
         });
     }
 </script>
+<button id="rouletteBtn" class="roulette-fab" onclick="document.getElementById('rouletteModal').classList.add('active')">
+    🎲 <span class="fab-text">Decide For Me</span>
+</button>
+
+<div id="rouletteModal" class="modal-overlay">
+    <div class="modal-content roulette-content">
+        <button class="modal-close" onclick="closeRoulette()">×</button>
+        <h2 class="modal-title" style="text-align: center; font-family: 'Caveat', cursive; font-size: 2.5rem; color: var(--accent); text-shadow: 0 0 20px rgba(124, 124, 255, 0.4);">The Vibe Check</h2>
+        <p class="modal-desc" style="text-align: center;">Can't decide? Let the algorithm choose your fate.</p>
+
+        <div class="roulette-display" id="rouletteDisplay">
+            <div class="spin-box" id="spinBox">❓</div>
+        </div>
+
+        <button class="spin-trigger" id="spinBtn">SPIN THE WHEEL</button>
+    </div>
+</div>
+<script>
+    function closeRoulette() {
+    document.getElementById('rouletteModal').classList.remove('active');
+    document.getElementById('spinBox').innerHTML = '❓';
+    document.getElementById('spinBox').classList.remove('winner');
+    
+    const spinBtn = document.getElementById('spinBtn');
+    spinBtn.innerText = "SPIN THE WHEEL";
+    spinBtn.onclick = startSpin; // Reset button action
+}
+
+function startSpin() {
+    // 1. Find all available movies currently loaded on the screen
+    // This grabs both the grid cards (watchlist) and trending cards!
+    const movies = Array.from(document.querySelectorAll('.card:not(.hidden), .trending-card'));
+
+    if (movies.length === 0) {
+        alert("No movies available to spin! Check your filters or trending section.");
+        return;
+    }
+
+    const spinBox = document.getElementById('spinBox');
+    const spinBtn = document.getElementById('spinBtn');
+    
+    // 2. Lock the button
+    spinBtn.disabled = true;
+    spinBtn.innerText = "ALGORITHM THINKING...";
+    spinBox.classList.remove('winner');
+
+    let counter = 0;
+    const maxSpins = 25; // How many flashes before it stops
+    const speed = 80;    // Milliseconds per flash
+
+    // 3. The Slot Machine Effect
+    const spinner = setInterval(() => {
+        const randomMovie = movies[Math.floor(Math.random() * movies.length)];
+        const img = randomMovie.querySelector('img').src;
+        
+        // Flash the poster
+        spinBox.innerHTML = `<img src="${img}" style="height: 200px; border-radius: 12px; object-fit: cover;">`;
+
+        counter++;
+        
+        // 4. The Winner Reveal
+        if (counter >= maxSpins) {
+            clearInterval(spinner);
+            
+            const winner = movies[Math.floor(Math.random() * movies.length)];
+            const winnerImg = winner.querySelector('img').src;
+            
+            spinBox.innerHTML = `<img src="${winnerImg}" style="height: 220px; border-radius: 12px;">`;
+            spinBox.classList.add('winner'); // Adds the glowing animation
+
+            spinBtn.innerText = "🍿 WATCH NOW";
+            spinBtn.disabled = false;
+
+            // When they click "Watch Now", it automatically opens your existing movie details modal!
+            spinBtn.onclick = () => {
+                closeRoulette();
+                winner.click(); 
+            };
+        }
+    }, speed);
+}
+
+// Attach the start function to the button initially
+document.getElementById('spinBtn').onclick = startSpin;
+</script>
 </body>
 </html>
